@@ -35,7 +35,10 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
     scale = 10
     for x in range(width):
         for y in range(height):
-            wow = 10
+            wow = 8
+            if random.randint(0, 100) < 20:
+                world.append({"block": "poppy", "coords": (x*2, wow, y*2)})
+            wow += 2
             world.append({"block": "grass_block", "coords": (x*2, wow, y*2)})
             wow += 2
             for i in range(0, 2):
@@ -44,11 +47,14 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
             for i in range(0, 5):
                 deeper_block = "stone"
                 stone_deepness = 0
-                if random.randint(0, 100) < 20 and stone_deepness < 2:
+                if random.randint(0, 100) < 20 and stone_deepness <= 2:
                     deeper_block = "dirt_block"
+                else:
+                    deeper_block = "stone"
                 world.append({"block": deeper_block, "coords": (x*2, wow, y*2)})
                 stone_deepness += 1
                 wow += 2
+            world.append({"block": "bedrock", "coords": (x*2, wow, y*2)})
     # add ores between wow 12 and 24
     for block in world:
         with open("assets/treasure.json", "r") as f:

@@ -1,7 +1,8 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import CardMaker, TextureStage, loadPrcFileData, WindowProperties, Vec3
+from panda3d.core import CardMaker, TextureStage, loadPrcFileData, WindowProperties, Vec3, TextNode, ClockObject
 from direct.task import Task
 from direct.showbase.DirectObject import DirectObject
+from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import ClockObject, LVector3, CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue
 from direct.interval.LerpInterval import LerpFunc
 from direct.showbase.ShowBaseGlobal import globalClock
@@ -17,6 +18,8 @@ world = build_world()
 class MainWindow(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
+
+        self.created_cards = []
         
         self.move_forward_task = None
         self.move_backward_task = None
@@ -66,6 +69,7 @@ class MainWindow(ShowBase):
         self.mouseLookTask = taskMgr.add(self.mouseLook, "mouseLookTask")
         base.camLens.setNearFar(0.1, 1000)
         base.camLens.setFov(75)
+        self.addHUD()
 
     def toggle_fullscreen(self):
         props = WindowProperties()
@@ -94,74 +98,173 @@ class MainWindow(ShowBase):
 
         return Task.cont  # Continue the task indefinitely
 
+    def find_neighbours(self, coords):
+        # neighbours is dictionary with top, bottom, left, right, front, back as keys and bool as values True if there is a block, False if there isn't
+        for block in world:
+            if block["coords"] == coords:
+                neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
+                for block in world:
+                    if block["coords"] == (coords[0], coords[1] + 2, coords[2]):
+                        neighbours["top"] = True
+                    if block["coords"] == (coords[0], coords[1] - 2, coords[2]):
+                        neighbours["bottom"] = True
+                    if block["coords"] == (coords[0] - 2, coords[1], coords[2]):
+                        neighbours["left"] = True
+                    if block["coords"] == (coords[0] + 2, coords[1], coords[2]):
+                        neighbours["right"] = True
+                    if block["coords"] == (coords[0], coords[1], coords[2] - 2):
+                        neighbours["front"] = True
+                    if block["coords"] == (coords[0], coords[1], coords[2] + 2):
+                        neighbours["back"] = True
+                return neighbours
+
     def create_cube(self, block, coords):
-        coords = (coords[0], coords[2], -coords[1])
         block_data = self.thing_id_to_data(block)
+        original_coords = coords
+        coords = (coords[0], coords[2], -coords[1])
         card = CardMaker("card")
         card.setFrame(-1, 1, -1, 1)
         node = self.render.attachNewNode(card.generate())
-        node.setPos(*coords)
+
+        try:
+            image = Path("assets", "textures", "block", block_data["textures"]["2dcross"])
+            texture = self.loader.loadTexture(image)
+            texture.setMagfilter(0)
+
+            node.setTexture(texture, 0)
+            node.setTransparency(1)
+            node.setHpr(45, 0, 0)
+            node.setPos(coords[0], coords[1] + 1, coords[2])
+            node.setTwoSided(True)
+
+            # card_2 = CardMaker("card_2")
+            # card_2.setFrame(-1, 1, -1, 1)
+            # node_2 = self.render.attachNewNode(card_2.generate())
+            # node_2.setHpr(225, 0, 0)
+            # node_2.setPos(coords[0], coords[1] + 1, coords[2])
+
+            # node_2.setTexture(texture, 0)
+            # node_2.setTransparency(1)
+
+            card_3 = CardMaker("card_3")
+            card_3.setFrame(-1, 1, -1, 1)
+            node_3 = self.render.attachNewNode(card_3.generate())
+            node_3.setPos(coords[0], coords[1] + 1, coords[2])
+            node_3.setHpr(135, 0, 0)
+
+            node_3.setTexture(texture, 0)
+            node_3.setTransparency(1)
+            node_3.setTwoSided(True)
+
+            # card_4 = CardMaker("card_4")
+            # card_4.setFrame(-1, 1, -1, 1)
+            # node_4 = self.render.attachNewNode(card_4.generate())
+            # node_4.setPos(coords[0], coords[1] + 1, coords[2])
+            # node_4.setHpr(315, 0, 0)
+
+            # node_4.setTexture(texture, 0)
+            # node_4.setTransparency(1)
+        except KeyError:
+            pass
+        
+        try:
+            top = Path("assets", "textures", "block", block_data["textures"]["top"])
+            bottom = Path("assets", "textures", "block", block_data["textures"]["bottom"])
+            front = Path("assets", "textures", "block", block_data["textures"]["front"])
+            back = Path("assets", "textures", "block", block_data["textures"]["back"])
+            left = Path("assets", "textures", "block", block_data["textures"]["left"])
+            right = Path("assets", "textures", "block", block_data["textures"]["right"])
+
+            if (top == bottom) and (top == front) and (top == back) and (top == left) and (top == right):
+                texture = self.loader.loadTexture(top)
+                texture_2 = texture
+                texture_3 = texture
+                texture_4 = texture
+                texture_5 = texture
+                texture_6 = texture
+                texture.setMagfilter(0)
+            else:
+                texture = self.loader.loadTexture(front)
+                texture_2 = self.loader.loadTexture(bottom)
+                texture_3 = self.loader.loadTexture(top)
+                texture_4 = self.loader.loadTexture(back)
+                texture_5 = self.loader.loadTexture(left)
+                texture_6 = self.loader.loadTexture(right)
+
+            texture.setMagfilter(0)
+            texture_2.setMagfilter(0)
+            texture_3.setMagfilter(0)
+            texture_4.setMagfilter(0)
+            texture_5.setMagfilter(0)
+            texture_6.setMagfilter(0)
+
+            node.setPos(*coords)
+
+            node.setTexture(texture, 0)
+
+            card_2 = CardMaker("card_2")
+            card_2.setFrame(-1, 1, -1, 1)
+            node_2 = self.render.attachNewNode(card_2.generate())
+            node_2.setPos(coords[0], coords[1] + 1, coords[2] - 1)
+            node_2.setHpr(0, 90, 0)
+            self.created_cards.append([coords[0], coords[1] + 1, coords[2] - 1])
+
+            node_2.setTexture(texture_2, 0)
+
+            card_3 = CardMaker("card_3")
+            card_3.setFrame(-1, 1, -1, 1)
+            node_3 = self.render.attachNewNode(card_3.generate())
+            node_3.setPos(coords[0], coords[1] + 1, coords[2] + 1)
+            node_3.setHpr(0, -90, 180)
+            self.created_cards.append([coords[0], coords[1] + 1, coords[2] + 1])
+
+            node_3.setTexture(texture_3, 0)
+
+            card_4 = CardMaker("card_4")
+            card_4.setFrame(-1, 1, -1, 1)
+            node_4 = self.render.attachNewNode(card_4.generate())
+            node_4.setPos(coords[0] - 1, coords[1] + 1, coords[2])
+            node_4.setHpr(-90, 0, 0)
+            self.created_cards.append([coords[0] - 1, coords[1] + 1, coords[2]])
+
+            node_4.setTexture(texture_4, 0)
+
+            card_5 = CardMaker("card_5")
+            card_5.setFrame(-1, 1, -1, 1)
+            node_5 = self.render.attachNewNode(card_5.generate())
+            node_5.setPos(coords[0] + 1, coords[1] + 1, coords[2])
+            node_5.setHpr(90, 0, 0)
+            self.created_cards.append([coords[0] + 1, coords[1] + 1, coords[2]])
+
+            node_5.setTexture(texture_5, 0)
+
+            card_6 = CardMaker("card_6")
+            card_6.setFrame(-1, 1, -1, 1)
+            node_6 = self.render.attachNewNode(card_6.generate())
+            node_6.setPos(coords[0], coords[1] + 2, coords[2])
+            node_6.setHpr(0, 180, 180)
+            self.created_cards.append([coords[0], coords[1] + 2, coords[2]])
+
+            node_6.setTexture(texture_6, 0)
+
+            node.setTransparency(1)
+            node_2.setTransparency(1)
+            node_3.setTransparency(1)
+            node_4.setTransparency(1)
+            node_5.setTransparency(1)
+            node_6.setTransparency(1)
+        except:
+            pass
+
+    def addHUD(self):
+        text = "braincraft Alpha"
+        OnscreenText(text=text, parent=base.a2dTopLeft, pos=(0.01, -0.07), fg=(1, 1, 1, 1), align=TextNode.ALeft, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"))
+        self.fps = OnscreenText(text="", parent=base.a2dTopRight, pos=(-0.1, -0.07), fg=(1, 1, 1, 1), align=TextNode.ARight, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"), mayChange=True)
+        self.fps_task = taskMgr.add(self.update_fps, "fps_task")
     
-        top = Path("assets", "textures", "block", block_data["textures"]["top"])
-        bottom = Path("assets", "textures", "block", block_data["textures"]["bottom"])
-        front = Path("assets", "textures", "block", block_data["textures"]["front"])
-        back = Path("assets", "textures", "block", block_data["textures"]["back"])
-        left = Path("assets", "textures", "block", block_data["textures"]["left"])
-        right = Path("assets", "textures", "block", block_data["textures"]["right"])
-    
-        texture = self.loader.loadTexture(front)
-        texture.setMagfilter(0)
-        node.setTexture(texture, 0)
-
-        card_2 = CardMaker("card_2")
-        card_2.setFrame(-1, 1, -1, 1)
-        node_2 = self.render.attachNewNode(card_2.generate())
-        node_2.setPos(coords[0], coords[1] + 1, coords[2] - 1)
-        node_2.setHpr(0, 90, 0)
-
-        texture_2 = self.loader.loadTexture(bottom)
-        texture_2.setMagfilter(0)
-        node_2.setTexture(texture_2, 0)
-
-        card_3 = CardMaker("card_3")
-        card_3.setFrame(-1, 1, -1, 1)
-        node_3 = self.render.attachNewNode(card_3.generate())
-        node_3.setPos(coords[0], coords[1] + 1, coords[2] + 1)
-        node_3.setHpr(0, -90, 180)
-
-        texture_3 = self.loader.loadTexture(top)
-        texture_3.setMagfilter(0)
-        node_3.setTexture(texture_3, 0)
-
-        card_4 = CardMaker("card_4")
-        card_4.setFrame(-1, 1, -1, 1)
-        node_4 = self.render.attachNewNode(card_4.generate())
-        node_4.setPos(coords[0] - 1, coords[1] + 1, coords[2])
-        node_4.setHpr(-90, 0, 0)
-
-        texture_4 = self.loader.loadTexture(back)
-        texture_4.setMagfilter(0)
-        node_4.setTexture(texture_4, 0)
-
-        card_5 = CardMaker("card_5")
-        card_5.setFrame(-1, 1, -1, 1)
-        node_5 = self.render.attachNewNode(card_5.generate())
-        node_5.setPos(coords[0] + 1, coords[1] + 1, coords[2])
-        node_5.setHpr(90, 0, 0)
-
-        texture_5 = self.loader.loadTexture(left)
-        texture_5.setMagfilter(0)
-        node_5.setTexture(texture_5, 0)
-
-        card_6 = CardMaker("card_6")
-        card_6.setFrame(-1, 1, -1, 1)
-        node_6 = self.render.attachNewNode(card_6.generate())
-        node_6.setPos(coords[0], coords[1] + 2, coords[2])
-        node_6.setHpr(0, 180, 180)
-
-        texture_6 = self.loader.loadTexture(right)
-        texture_6.setMagfilter(0)
-        node_6.setTexture(texture_6, 0)
+    def update_fps(self, task):
+        self.fps.setText("FPS: " + str(int(round(globalClock.getAverageFrameRate(), 0))))
+        return Task.cont
 
     def change_fov(self, fov):
         # base.camLens.setFov(fov)
