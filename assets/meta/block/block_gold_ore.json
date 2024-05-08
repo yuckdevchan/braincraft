@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "gold_ore.png",
+        "bottom": "gold_ore.png",
+        "front": "gold_ore.png",
+        "back": "gold_ore.png",
+        "left": "gold_ore.png",
+        "right": "gold_ore.png"
+    },
+    "id": "gold_ore",
+    "name": "Gold Ore"
+}

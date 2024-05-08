@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "bedrock.png",
+        "bottom": "bedrock.png",
+        "front": "bedrock.png",
+        "back": "bedrock.png",
+        "left": "bedrock.png",
+        "right": "bedrock.png"
+    },
+    "id": "bedrock",
+    "name": "Bedrock"
+}

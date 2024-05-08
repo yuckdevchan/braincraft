@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "grass.png",
+        "bottom": "dirt.png",
+        "front": "grass_side.png",
+        "back": "grass_side.png",
+        "left": "grass_side.png",
+        "right": "grass_side.png"
+    },
+    "id": "grass_block",
+    "name": "Grass Block"
+}

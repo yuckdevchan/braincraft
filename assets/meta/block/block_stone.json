@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "stone.png",
+        "bottom": "stone.png",
+        "front": "stone.png",
+        "back": "stone.png",
+        "left": "stone.png",
+        "right": "stone.png"
+    },
+    "id": "stone",
+    "name": "Stone"
+}

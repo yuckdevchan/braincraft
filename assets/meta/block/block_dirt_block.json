@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "dirt.png",
+        "bottom": "dirt.png",
+        "front": "dirt.png",
+        "back": "dirt.png",
+        "left": "dirt.png",
+        "right": "dirt.png"
+    },
+    "id": "dirt_block",
+    "name": "Dirt Block"
+}

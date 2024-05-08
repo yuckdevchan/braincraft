@@ -1,0 +1,6 @@
+[
+    {"block": "dirt_block", "coords": [0, 0, 0]},
+    {"block": "grass_block", "coords": [2, 0, 0]},
+    {"block": "grass_block", "coords": [0, -2, 0]},
+    {"block": "grass_block", "coords": [0, 0, 2]}
+]

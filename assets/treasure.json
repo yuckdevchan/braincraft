@@ -1,0 +1,22 @@
+{
+    "diamond_ore": {
+        "rarity": 5,
+        "yUpper": 23,
+        "yLower": 15
+    },
+    "coal_ore": {
+        "rarity": 20,
+        "yUpper": 23,
+        "yLower": 15
+    },
+    "iron_ore": {
+        "rarity": 10,
+        "yUpper": 23,
+        "yLower": 15
+    },
+    "gold_ore": {
+        "rarity": 7,
+        "yUpper": 23,
+        "yLower": 15
+    }
+}
