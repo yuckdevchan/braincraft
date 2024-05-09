@@ -1,9 +1,9 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import CardMaker, TextureStage, loadPrcFileData, WindowProperties, Vec3, TextNode, ClockObject
+from panda3d.core import CardMaker, TextureStage, loadPrcFileData, WindowProperties, Vec3, TextNode, ClockObject, CollisionNode, CollisionBox, Point3
 from direct.task import Task
 from direct.showbase.DirectObject import DirectObject
 from direct.gui.OnscreenText import OnscreenText
-from panda3d.core import ClockObject, LVector3, CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue
+from panda3d.core import ClockObject, LVector3, CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue, CollisionTraverser, CollisionHandlerQueue, BitMask32, CollisionSphere
 from direct.interval.LerpInterval import LerpFunc
 from direct.showbase.ShowBaseGlobal import globalClock
 from panda3d.core import WindowProperties
@@ -36,11 +36,6 @@ class MainWindow(ShowBase):
         # props.setFullscreen(True)
         props.setIconFilename("assets/textures/icon.ico")
         self.win.requestProperties(props)
-        # Enable the frame rate meter
-        loadPrcFileData("", "show-frame-rate-meter 1")
-
-        # Unlock the framerate
-        loadPrcFileData("", "sync-video 0")
 
         self.speed = 0.15
         self.accept("escape", self.userExit)
@@ -70,6 +65,17 @@ class MainWindow(ShowBase):
         base.camLens.setNearFar(0.1, 1000)
         base.camLens.setFov(75)
         self.addHUD()
+        base.setFrameRateMeter(True)
+
+        self.cTrav = CollisionTraverser()
+        camCollisionNode = CollisionNode('camCollisionNode')
+        camCollisionNode.addSolid(CollisionSphere(0, 0, 0, 1))
+        camCollisionNode.setFromCollideMask(BitMask32.bit(1))
+        camCollisionNode.setIntoCollideMask(BitMask32.allOff())
+        camCollisionNP = self.camera.attachNewNode(camCollisionNode)
+        self.camCollisionQueue = CollisionHandlerQueue()
+        self.cTrav.addCollider(camCollisionNP, self.camCollisionQueue)
+        camCollisionNP.show()
 
     def toggle_fullscreen(self):
         props = WindowProperties()
@@ -104,17 +110,19 @@ class MainWindow(ShowBase):
             if block["coords"] == coords:
                 neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
                 for block in world:
-                    if block["coords"] == (coords[0], coords[1] + 2, coords[2]):
-                        neighbours["top"] = True
-                    if block["coords"] == (coords[0], coords[1] - 2, coords[2]):
+                    target_coords = (coords[0], coords[1] + 2, coords[2])
+                    if block["coords"] == [coords[0], coords[1] - 2, coords[2]]:
+                        if not "2dcross" in self.thing_id_to_data(block["block"])["textures"]:
+                            neighbours["top"] = True
+                    if block["coords"] == [coords[0], coords[1] + 2, coords[2]]:
                         neighbours["bottom"] = True
-                    if block["coords"] == (coords[0] - 2, coords[1], coords[2]):
+                    if block["coords"] == [coords[0] - 2, coords[1], coords[2]]:
                         neighbours["left"] = True
-                    if block["coords"] == (coords[0] + 2, coords[1], coords[2]):
+                    if block["coords"] == [coords[0] + 2, coords[1], coords[2]]:
                         neighbours["right"] = True
-                    if block["coords"] == (coords[0], coords[1], coords[2] - 2):
+                    if block["coords"] == [coords[0], coords[1], coords[2] - 2]:
                         neighbours["front"] = True
-                    if block["coords"] == (coords[0], coords[1], coords[2] + 2):
+                    if block["coords"] == [coords[0], coords[1], coords[2] + 2]:
                         neighbours["back"] = True
                 return neighbours
 
@@ -122,29 +130,21 @@ class MainWindow(ShowBase):
         block_data = self.thing_id_to_data(block)
         original_coords = coords
         coords = (coords[0], coords[2], -coords[1])
-        card = CardMaker("card")
-        card.setFrame(-1, 1, -1, 1)
-        node = self.render.attachNewNode(card.generate())
 
         try:
             image = Path("assets", "textures", "block", block_data["textures"]["2dcross"])
             texture = self.loader.loadTexture(image)
             texture.setMagfilter(0)
 
+            card = CardMaker("card")
+            card.setFrame(-1, 1, -1, 1)
+            node = self.render.attachNewNode(card.generate())
+
             node.setTexture(texture, 0)
             node.setTransparency(1)
             node.setHpr(45, 0, 0)
             node.setPos(coords[0], coords[1] + 1, coords[2])
             node.setTwoSided(True)
-
-            # card_2 = CardMaker("card_2")
-            # card_2.setFrame(-1, 1, -1, 1)
-            # node_2 = self.render.attachNewNode(card_2.generate())
-            # node_2.setHpr(225, 0, 0)
-            # node_2.setPos(coords[0], coords[1] + 1, coords[2])
-
-            # node_2.setTexture(texture, 0)
-            # node_2.setTransparency(1)
 
             card_3 = CardMaker("card_3")
             card_3.setFrame(-1, 1, -1, 1)
@@ -155,15 +155,6 @@ class MainWindow(ShowBase):
             node_3.setTexture(texture, 0)
             node_3.setTransparency(1)
             node_3.setTwoSided(True)
-
-            # card_4 = CardMaker("card_4")
-            # card_4.setFrame(-1, 1, -1, 1)
-            # node_4 = self.render.attachNewNode(card_4.generate())
-            # node_4.setPos(coords[0], coords[1] + 1, coords[2])
-            # node_4.setHpr(315, 0, 0)
-
-            # node_4.setTexture(texture, 0)
-            # node_4.setTransparency(1)
         except KeyError:
             pass
         
@@ -198,61 +189,66 @@ class MainWindow(ShowBase):
             texture_5.setMagfilter(0)
             texture_6.setMagfilter(0)
 
-            node.setPos(*coords)
+            if not self.find_neighbours(original_coords)["front"]:
+                card = CardMaker("card")
+                card.setFrame(-1, 1, -1, 1)
+                node = self.render.attachNewNode(card.generate())
+                node.setPos(*coords)
+                node.setTexture(texture, 0)
+                collision_node = CollisionNode("collision_node")
+                collision_node.addSolid(CollisionBox(Point3(0, 1, 0), 1, 1, 1))
+                collision_node_path = node.attachNewNode(collision_node)
+                # collision_node_path.show()
 
-            node.setTexture(texture, 0)
+            if not self.find_neighbours(original_coords)["bottom"]:
+                card_2 = CardMaker("card_2")
+                card_2.setFrame(-1, 1, -1, 1)
+                node_2 = self.render.attachNewNode(card_2.generate())
+                node_2.setPos(coords[0], coords[1] + 1, coords[2] - 1)
+                node_2.setHpr(0, 90, 0)
+                self.created_cards.append([coords[0], coords[1] + 1, coords[2] - 1])
 
-            card_2 = CardMaker("card_2")
-            card_2.setFrame(-1, 1, -1, 1)
-            node_2 = self.render.attachNewNode(card_2.generate())
-            node_2.setPos(coords[0], coords[1] + 1, coords[2] - 1)
-            node_2.setHpr(0, 90, 0)
-            self.created_cards.append([coords[0], coords[1] + 1, coords[2] - 1])
+                node_2.setTexture(texture_2, 0)
 
-            node_2.setTexture(texture_2, 0)
+            if not self.find_neighbours(original_coords)["top"]:
+                card_3 = CardMaker("card_3")
+                card_3.setFrame(-1, 1, -1, 1)
+                node_3 = self.render.attachNewNode(card_3.generate())
+                node_3.setPos(coords[0], coords[1] + 1, coords[2] + 1)
+                node_3.setHpr(0, -90, 180)
+                self.created_cards.append([coords[0], coords[1] + 1, coords[2] + 1])
 
-            card_3 = CardMaker("card_3")
-            card_3.setFrame(-1, 1, -1, 1)
-            node_3 = self.render.attachNewNode(card_3.generate())
-            node_3.setPos(coords[0], coords[1] + 1, coords[2] + 1)
-            node_3.setHpr(0, -90, 180)
-            self.created_cards.append([coords[0], coords[1] + 1, coords[2] + 1])
+                node_3.setTexture(texture_3, 0)
 
-            node_3.setTexture(texture_3, 0)
+            if not self.find_neighbours(original_coords)["left"]:
+                card_4 = CardMaker("card_4")
+                card_4.setFrame(-1, 1, -1, 1)
+                node_4 = self.render.attachNewNode(card_4.generate())
+                node_4.setPos(coords[0] - 1, coords[1] + 1, coords[2])
+                node_4.setHpr(-90, 0, 0)
+                self.created_cards.append([coords[0] - 1, coords[1] + 1, coords[2]])
 
-            card_4 = CardMaker("card_4")
-            card_4.setFrame(-1, 1, -1, 1)
-            node_4 = self.render.attachNewNode(card_4.generate())
-            node_4.setPos(coords[0] - 1, coords[1] + 1, coords[2])
-            node_4.setHpr(-90, 0, 0)
-            self.created_cards.append([coords[0] - 1, coords[1] + 1, coords[2]])
+                node_4.setTexture(texture_4, 0)
 
-            node_4.setTexture(texture_4, 0)
+            if not self.find_neighbours(original_coords)["right"]:
+                card_5 = CardMaker("card_5")
+                card_5.setFrame(-1, 1, -1, 1)
+                node_5 = self.render.attachNewNode(card_5.generate())
+                node_5.setPos(coords[0] + 1, coords[1] + 1, coords[2])
+                node_5.setHpr(90, 0, 0)
+                self.created_cards.append([coords[0] + 1, coords[1] + 1, coords[2]])
 
-            card_5 = CardMaker("card_5")
-            card_5.setFrame(-1, 1, -1, 1)
-            node_5 = self.render.attachNewNode(card_5.generate())
-            node_5.setPos(coords[0] + 1, coords[1] + 1, coords[2])
-            node_5.setHpr(90, 0, 0)
-            self.created_cards.append([coords[0] + 1, coords[1] + 1, coords[2]])
+                node_5.setTexture(texture_5, 0)
 
-            node_5.setTexture(texture_5, 0)
+            if not self.find_neighbours(original_coords)["back"]:
+                card_6 = CardMaker("card_6")
+                card_6.setFrame(-1, 1, -1, 1)
+                node_6 = self.render.attachNewNode(card_6.generate())
+                node_6.setPos(coords[0], coords[1] + 2, coords[2])
+                node_6.setHpr(0, 180, 180)
+                self.created_cards.append([coords[0], coords[1] + 2, coords[2]])
 
-            card_6 = CardMaker("card_6")
-            card_6.setFrame(-1, 1, -1, 1)
-            node_6 = self.render.attachNewNode(card_6.generate())
-            node_6.setPos(coords[0], coords[1] + 2, coords[2])
-            node_6.setHpr(0, 180, 180)
-            self.created_cards.append([coords[0], coords[1] + 2, coords[2]])
-
-            node_6.setTexture(texture_6, 0)
-
-            node.setTransparency(1)
-            node_2.setTransparency(1)
-            node_3.setTransparency(1)
-            node_4.setTransparency(1)
-            node_5.setTransparency(1)
-            node_6.setTransparency(1)
+                node_6.setTexture(texture_6, 0)
         except:
             pass
 
@@ -260,11 +256,11 @@ class MainWindow(ShowBase):
         text = "braincraft Alpha"
         OnscreenText(text=text, parent=base.a2dTopLeft, pos=(0.01, -0.07), fg=(1, 1, 1, 1), align=TextNode.ALeft, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"))
         self.fps = OnscreenText(text="", parent=base.a2dTopRight, pos=(-0.1, -0.07), fg=(1, 1, 1, 1), align=TextNode.ARight, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"), mayChange=True)
-        self.fps_task = taskMgr.add(self.update_fps, "fps_task")
-    
-    def update_fps(self, task):
-        self.fps.setText("FPS: " + str(int(round(globalClock.getAverageFrameRate(), 0))))
-        return Task.cont
+    #     self.fps_task = taskMgr.add(self.update_fps, "fps_task")
+
+    # def update_fps(self, task):
+    #     self.fps.setText("FPS: " + str(int(round(globalClock.getAverageFrameRate(), 0))))
+    #     return Task.cont
 
     def change_fov(self, fov):
         # base.camLens.setFov(fov)
