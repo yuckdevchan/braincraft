@@ -1,37 +1,47 @@
 {
     "diamond_ore": {
-        "rarity": 5,
-        "yUpper": 23,
-        "yLower": 15
+        "rarity": 10,
+        "yUpper": 144,
+        "yLower": 100
     },
     "coal_ore": {
         "rarity": 20,
-        "yUpper": 23,
+        "yUpper": 30,
         "yLower": 15
     },
     "iron_ore": {
-        "rarity": 10,
-        "yUpper": 23,
-        "yLower": 15
+        "rarity": 25,
+        "yUpper": 80,
+        "yLower": 30
     },
     "gold_ore": {
-        "rarity": 7,
+        "rarity": 3,
         "yUpper": 23,
         "yLower": 15
     },
     "copper_ore": {
-        "rarity": 15,
-        "yUpper": 23,
+        "rarity": 5,
+        "yUpper": 60,
         "yLower": 15
     },
     "emerald_ore": {
-        "rarity": 5,
-        "yUpper": 23,
+        "rarity": 1,
+        "yUpper": 60,
         "yLower": 15
     },
     "lapis_ore": {
-        "rarity": 7,
-        "yUpper": 23,
-        "yLower": 15
+        "rarity": 15,
+        "yUpper": 144,
+        "yLower": 60
+    },
+    "bedrock": {
+        "rarity": 75,
+        "yUpper": 144,
+        "yLower": 136
+    },
+    "andesite": {
+        "rarity": 20,
+        "yUpper": 80,
+        "yLower": 0
     }
 }

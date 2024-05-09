@@ -1,6 +1,7 @@
 from perlin_noise import PerlinNoise
 import json, random, os, h5py
 import numpy as np
+import pickle
 
 def generate_world():
     superflat = False
@@ -14,12 +15,16 @@ def generate_world():
     if superflat:
         world = generate_superflat_world(superflat_composition, 6, 6)
     else:
-        seed = random.randint(0, 100000000000000000000000000000)
+        # seed = random.randint(0, 100000000000000000000000000000)
+        seed = 2
         print("Generating world with seed: " + str(seed))
-        world = generate_perlin_noise_2d(32, 32, seed)
+        world = generate_perlin_noise_2d(16, 16, seed)
         # world = generate_random(8, 8)
     # with open("world.json", "w") as f:
         # json.dump(world, f)
+    # save as pickle
+    with open("world.pkl", "wb") as f:
+        pickle.dump(world, f)
     return world
 
 def generate_superflat_world(composition: dict, width: int, height: int) -> list:
@@ -45,9 +50,9 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
     for x in range(width):
         for y in range(height):
             wow = 8
-            if random.randint(0, 100) < 20:
+            if random.randint(0, 100) < 5:
                 world[(x * 2, wow, y * 2)] = "poppy"
-            elif random.randint(0, 100) < 14:
+            elif random.randint(0, 100) < 5:
                 world[(x * 2, wow, y * 2)] = "dandelion"
             wow += 2
             world[(x * 2, wow, y * 2)] = "grass_block"
@@ -55,10 +60,10 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
             for i in range(0, 2):
                 world[(x * 2, wow, y * 2)] = "dirt_block"
                 wow += 2
-            for i in range(0, 5):
+            for i in range(0, 64):
                 deeper_block = "stone"
                 stone_deepness = 0
-                if random.randint(0, 100) < 20 and stone_deepness <= 2:
+                if random.randint(0, 100) < 10 and stone_deepness <= 2:
                     deeper_block = "dirt_block"
                 else:
                     deeper_block = "stone"
@@ -73,6 +78,7 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
             if (
                 block[1] >= treasure[ore]["yLower"]
                 and block[1] <= treasure[ore]["yUpper"]
+                and world[block] == "stone"
             ):
                 if random.randint(0, 100) < treasure[ore]["rarity"]:
                     world[block] = ore

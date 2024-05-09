@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "andesite.png",
+        "bottom": "andesite.png",
+        "front": "andesite.png",
+        "back": "andesite.png",
+        "left": "andesite.png",
+        "right": "andesite.png"
+    },
+    "id": "andesite",
+    "name": "Andesite"
+}

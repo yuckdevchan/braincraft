@@ -1,0 +1,13 @@
+{
+    "textures": {
+        "top": "nether_portal.png",
+        "bottom": "nether_portal.png",
+        "front": "nether_portal.png",
+        "back": "nether_portal.png",
+        "left": "nether_portal.png",
+        "right": "nether_portal.png"
+    },
+    "id": "nether_portal",
+    "name": "Nether Portal Block",
+    "transparency": true
+}

@@ -55,12 +55,40 @@ class MainWindow(ShowBase):
         self.accept("shift-up", self.stop_sprinting)
         self.accept("f11", self.toggle_fullscreen)
         self.accept("f9", self.toggle_wireframe)
+        self.accept("-", self.zoom_out)
+        self.accept("=", self.zoom_in)
+        self.accept("c", self.zoom_in_smol)
+        self.accept("c-up", self.zoom_out_smol)
         # self.accept("mouse1", self.place_block)
 
+        bignode = self.render.attachNewNode("bignode")
         for block in world:
             self.create_cube(world[block], block)
-        self.create_cube("dirt_block", (0, -30, 0))
-            
+        bignode.flattenStrong()
+        z = 6
+        y = 8
+        x = 10
+        self.create_cube("obsidian", (x, y, z))
+        self.create_cube("obsidian", (x, y-2, z))
+        self.create_cube("obsidian", (x, y-4, z))
+        self.create_cube("obsidian", (x, y-6, z))
+        self.create_cube("obsidian", (x, y-8, z))
+        self.create_cube("nether_portal", (x+2, y-2, z))
+        self.create_cube("nether_portal", (x+2, y-4, z))
+        self.create_cube("nether_portal", (x+2, y-6, z))
+        self.create_cube("nether_portal", (x+4, y-2, z))
+        self.create_cube("nether_portal", (x+4, y-4, z))
+        self.create_cube("nether_portal", (x+4, y-6, z))
+        self.create_cube("obsidian", (x+2, y, z))
+        self.create_cube("obsidian", (x+4, y, z))
+        self.create_cube("obsidian", (x+6, y, z))
+        self.create_cube("obsidian", (x+6, y-2, z))
+        self.create_cube("obsidian", (x+6, y-4, z))
+        self.create_cube("obsidian", (x+6, y-6, z))
+        self.create_cube("obsidian", (x+6, y-8, z))
+        self.create_cube("obsidian", (x+4, y-8, z))
+        self.create_cube("obsidian", (x+2, y-8, z))
+        
         self.disableMouse()
         self.mouseLookTask = taskMgr.add(self.mouseLook, "mouseLookTask")
         base.camLens.setNearFar(0.1, 1000)
@@ -77,6 +105,18 @@ class MainWindow(ShowBase):
         self.camCollisionQueue = CollisionHandlerQueue()
         self.cTrav.addCollider(camCollisionNP, self.camCollisionQueue)
         camCollisionNP.show()
+
+    def zoom_out(self):
+        self.camera.setY(self.camera, -100)
+
+    def zoom_in(self):
+        self.camera.setY(self.camera, 100)
+
+    def zoom_in_smol(self):
+        base.camLens.setFov(base.camLens.getFov() - 25)
+
+    def zoom_out_smol(self):
+        base.camLens.setFov(base.camLens.getFov() + 25)
 
     def toggle_fullscreen(self):
         props = WindowProperties()
@@ -266,6 +306,25 @@ class MainWindow(ShowBase):
                 self.created_cards.append([coords[0], coords[1] + 2, coords[2]])
 
                 node_6.setTexture(texture_6, 0)
+            
+            # reparent all nodes to bignode
+            node.reparentTo(self.bignode)
+            node_2.reparentTo(self.bignode)
+            node_3.reparentTo(self.bignode)
+            node_4.reparentTo(self.bignode)
+            node_5.reparentTo(self.bignode)
+            node_6.reparentTo(self.bignode)
+
+            try:
+                if block_data["transparency"]:
+                    node.setTransparency(1)
+                    node_2.setTransparency(1)
+                    node_3.setTransparency(1)
+                    node_4.setTransparency(1)
+                    node_5.setTransparency(1)
+                    node_6.setTransparency(1)
+            except KeyError:
+                pass
         except:
             pass
 

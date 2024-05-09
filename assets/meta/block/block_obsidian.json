@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "obsidian.png",
+        "bottom": "obsidian.png",
+        "front": "obsidian.png",
+        "back": "obsidian.png",
+        "left": "obsidian.png",
+        "right": "obsidian.png"
+    },
+    "id": "obsidian",
+    "name": "Obsidian"
+}
