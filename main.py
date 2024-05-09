@@ -31,7 +31,7 @@ class MainWindow(ShowBase):
 
         props = WindowProperties()
         props.setTitle("Braincraft")
-        props.setSize(3840, 2160)
+        props.setSize(1920, 1080)
         props.setCursorHidden(True)
         # props.setFullscreen(True)
         props.setIconFilename("assets/textures/icon.ico")

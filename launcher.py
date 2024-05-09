@@ -54,7 +54,8 @@ class MainWindow(QMainWindow):
 
     def launch(self):
         print("Launching braincraft...")
-        subprocess.Popen(["python", os.path.join(self.get_program_directory(), "main.py")])
+        subprocess.run("python perlin.py", shell=True)
+        subprocess.Popen("python main.py", shell=True)
         os._exit(0)
 
     def get_program_directory(self):

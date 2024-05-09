@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "copper_ore.png",
+        "bottom": "copper_ore.png",
+        "front": "copper_ore.png",
+        "back": "copper_ore.png",
+        "left": "copper_ore.png",
+        "right": "copper_ore.png"
+    },
+    "id": "copper_ore",
+    "name": "Copper Ore"
+}

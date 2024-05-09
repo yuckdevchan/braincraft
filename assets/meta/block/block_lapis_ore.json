@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "lapis_ore.png",
+        "bottom": "lapis_ore.png",
+        "front": "lapis_ore.png",
+        "back": "lapis_ore.png",
+        "left": "lapis_ore.png",
+        "right": "lapis_ore.png"
+    },
+    "id": "lapis_ore",
+    "name": "Lapis Ore"
+}

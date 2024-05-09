@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "emerald_ore.png",
+        "bottom": "emerald_ore.png",
+        "front": "emerald_ore.png",
+        "back": "emerald_ore.png",
+        "left": "emerald_ore.png",
+        "right": "emerald_ore.png"
+    },
+    "id": "emerald_ore",
+    "name": "Emerald Ore"
+}

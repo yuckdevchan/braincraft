@@ -18,5 +18,20 @@
         "rarity": 7,
         "yUpper": 23,
         "yLower": 15
+    },
+    "copper_ore": {
+        "rarity": 15,
+        "yUpper": 23,
+        "yLower": 15
+    },
+    "emerald_ore": {
+        "rarity": 5,
+        "yUpper": 23,
+        "yLower": 15
+    },
+    "lapis_ore": {
+        "rarity": 7,
+        "yUpper": 23,
+        "yLower": 15
     }
 }
