@@ -1,8 +1,8 @@
 from perlin_noise import PerlinNoise
-import json, random, os
+import json, random, os, h5py
+import numpy as np
 
-
-def generate_world_json():
+def generate_world():
     superflat = False
     # superflat_composition = {"grass_block": 1, "dirt_block": 3, "stone": 2, "bedrock": 1, "air": 2, "diamond_ore": 2}
     superflat_composition = {
@@ -16,11 +16,11 @@ def generate_world_json():
     else:
         seed = random.randint(0, 100000000000000000000000000000)
         print("Generating world with seed: " + str(seed))
-        world = generate_perlin_noise_2d(16, 16, seed)
+        world = generate_perlin_noise_2d(32, 32, seed)
         # world = generate_random(8, 8)
-    with open("world.json", "w") as f:
-        json.dump(world, f)
-
+    # with open("world.json", "w") as f:
+        # json.dump(world, f)
+    return world
 
 def generate_superflat_world(composition: dict, width: int, height: int) -> list:
     world = []
@@ -40,20 +40,20 @@ def generate_superflat_world(composition: dict, width: int, height: int) -> list
 def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
     random.seed(seed)
     noise = PerlinNoise(octaves=10, seed=seed)
-    world = []
+    world = {}
     scale = 10
     for x in range(width):
         for y in range(height):
             wow = 8
             if random.randint(0, 100) < 20:
-                world.append({"block": "poppy", "coords": (x * 2, wow, y * 2)})
+                world[(x * 2, wow, y * 2)] = "poppy"
             elif random.randint(0, 100) < 14:
-                world.append({"block": "dandelion", "coords": (x * 2, wow, y * 2)})
+                world[(x * 2, wow, y * 2)] = "dandelion"
             wow += 2
-            world.append({"block": "grass_block", "coords": (x * 2, wow, y * 2)})
+            world[(x * 2, wow, y * 2)] = "grass_block"
             wow += 2
             for i in range(0, 2):
-                world.append({"block": "dirt_block", "coords": (x * 2, wow, y * 2)})
+                world[(x * 2, wow, y * 2)] = "dirt_block"
                 wow += 2
             for i in range(0, 5):
                 deeper_block = "stone"
@@ -62,21 +62,31 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
                     deeper_block = "dirt_block"
                 else:
                     deeper_block = "stone"
-                world.append({"block": deeper_block, "coords": (x * 2, wow, y * 2)})
+                world[(x * 2, wow, y * 2)] = deeper_block
                 stone_deepness += 1
                 wow += 2
-            world.append({"block": "bedrock", "coords": (x * 2, wow, y * 2)})
-    # add ores between wow 12 and 24
+            world[(x * 2, wow, y * 2)] = "bedrock"
+    with open("assets/treasure.json", "r") as f:
+        treasure = json.load(f)
     for block in world:
-        with open("assets/treasure.json", "r") as f:
-            treasure = json.load(f)
         for ore in treasure:
             if (
-                block["coords"][1] >= treasure[ore]["yLower"]
-                and block["coords"][1] <= treasure[ore]["yUpper"]
+                block[1] >= treasure[ore]["yLower"]
+                and block[1] <= treasure[ore]["yUpper"]
             ):
                 if random.randint(0, 100) < treasure[ore]["rarity"]:
-                    block["block"] = ore
+                    world[block] = ore
+    # add ores between wow 12 and 24
+    # for block in world:
+    #     with open("assets/treasure.json", "r") as f:
+    #         treasure = json.load(f)
+    #     for ore in treasure:
+    #         if (
+    #             block["coords"][1] >= treasure[ore]["yLower"]
+    #             and block["coords"][1] <= treasure[ore]["yUpper"]
+    #         ):
+    #             if random.randint(0, 100) < treasure[ore]["rarity"]:
+    #                 block["block"] = ore
     return world
 
 
@@ -104,7 +114,3 @@ def generate_random(width: int, height: int) -> list:
                 if random.randint(0, 100) > 25:
                     world.append({"block": "poppy", "coords": (x * 2, wow - 2, y * 2)})
     return world
-
-
-if __name__ == "__main__":
-    generate_world_json()

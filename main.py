@@ -31,7 +31,7 @@ class MainWindow(ShowBase):
 
         props = WindowProperties()
         props.setTitle("Braincraft")
-        props.setSize(1920, 1080)
+        props.setSize(3840, 2160)
         props.setCursorHidden(True)
         # props.setFullscreen(True)
         props.setIconFilename("assets/textures/icon.ico")
@@ -58,14 +58,15 @@ class MainWindow(ShowBase):
         # self.accept("mouse1", self.place_block)
 
         for block in world:
-            self.create_cube(block["block"], block["coords"])
+            self.create_cube(world[block], block)
+        self.create_cube("dirt_block", (0, -30, 0))
             
         self.disableMouse()
         self.mouseLookTask = taskMgr.add(self.mouseLook, "mouseLookTask")
         base.camLens.setNearFar(0.1, 1000)
         base.camLens.setFov(75)
         self.addHUD()
-        base.setFrameRateMeter(True)
+        # base.setFrameRateMeter(True)
 
         self.cTrav = CollisionTraverser()
         camCollisionNode = CollisionNode('camCollisionNode')
@@ -84,6 +85,8 @@ class MainWindow(ShowBase):
 
     def toggle_wireframe(self):
         base.toggleWireframe()
+        num_primatives = base.render.analyze()
+        print(num_primatives)
 
     def mouseLook(self, task):
         """Update the camera view based on mouse movement."""
@@ -106,25 +109,39 @@ class MainWindow(ShowBase):
 
     def find_neighbours(self, coords):
         # neighbours is dictionary with top, bottom, left, right, front, back as keys and bool as values True if there is a block, False if there isn't
-        for block in world:
-            if block["coords"] == coords:
-                neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
-                for block in world:
-                    target_coords = (coords[0], coords[1] + 2, coords[2])
-                    if block["coords"] == [coords[0], coords[1] - 2, coords[2]]:
-                        if not "2dcross" in self.thing_id_to_data(block["block"])["textures"]:
-                            neighbours["top"] = True
-                    if block["coords"] == [coords[0], coords[1] + 2, coords[2]]:
-                        neighbours["bottom"] = True
-                    if block["coords"] == [coords[0] - 2, coords[1], coords[2]]:
-                        neighbours["left"] = True
-                    if block["coords"] == [coords[0] + 2, coords[1], coords[2]]:
-                        neighbours["right"] = True
-                    if block["coords"] == [coords[0], coords[1], coords[2] - 2]:
-                        neighbours["front"] = True
-                    if block["coords"] == [coords[0], coords[1], coords[2] + 2]:
-                        neighbours["back"] = True
-                return neighbours
+        # for block in world:
+        #     if block["coords"] == coords:
+        #         neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
+        #         for block in world:
+        #             target_coords = (coords[0], coords[1] + 2, coords[2])
+        #             if block["coords"] == [coords[0], coords[1] - 2, coords[2]]:
+        #                 if not "2dcross" in self.thing_id_to_data(block["block"])["textures"]:
+        #                     neighbours["top"] = True
+        #             if block["coords"] == [coords[0], coords[1] + 2, coords[2]]:
+        #                 neighbours["bottom"] = True
+        #             if block["coords"] == [coords[0] - 2, coords[1], coords[2]]:
+        #                 neighbours["left"] = True
+        #             if block["coords"] == [coords[0] + 2, coords[1], coords[2]]:
+        #                 neighbours["right"] = True
+        #             if block["coords"] == [coords[0], coords[1], coords[2] - 2]:
+        #                 neighbours["front"] = True
+        #             if block["coords"] == [coords[0], coords[1], coords[2] + 2]:
+        #                 neighbours["back"] = True
+        #         return neighbours
+        neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
+        if (coords[0], coords[1] - 2, coords[2]) in world and not "2dcross" in self.thing_id_to_data(world[(coords[0], coords[1] - 2, coords[2])])["textures"]:
+            neighbours["top"] = True
+        if (coords[0], coords[1] + 2, coords[2]) in world:
+            neighbours["bottom"] = True
+        if (coords[0] - 2, coords[1], coords[2]) in world:
+            neighbours["left"] = True
+        if (coords[0] + 2, coords[1], coords[2]) in world:
+            neighbours["right"] = True
+        if (coords[0], coords[1], coords[2] - 2) in world:
+            neighbours["front"] = True
+        if (coords[0], coords[1], coords[2] + 2) in world:
+            neighbours["back"] = True
+        return neighbours
 
     def create_cube(self, block, coords):
         block_data = self.thing_id_to_data(block)
@@ -195,9 +212,9 @@ class MainWindow(ShowBase):
                 node = self.render.attachNewNode(card.generate())
                 node.setPos(*coords)
                 node.setTexture(texture, 0)
-                collision_node = CollisionNode("collision_node")
-                collision_node.addSolid(CollisionBox(Point3(0, 1, 0), 1, 1, 1))
-                collision_node_path = node.attachNewNode(collision_node)
+                # collision_node = CollisionNode("collision_node")
+                # collision_node.addSolid(CollisionBox(Point3(0, 1, 0), 1, 1, 1))
+                # collision_node_path = node.attachNewNode(collision_node)
                 # collision_node_path.show()
 
             if not self.find_neighbours(original_coords)["bottom"]:
@@ -256,11 +273,11 @@ class MainWindow(ShowBase):
         text = "braincraft Alpha"
         OnscreenText(text=text, parent=base.a2dTopLeft, pos=(0.01, -0.07), fg=(1, 1, 1, 1), align=TextNode.ALeft, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"))
         self.fps = OnscreenText(text="", parent=base.a2dTopRight, pos=(-0.1, -0.07), fg=(1, 1, 1, 1), align=TextNode.ARight, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"), mayChange=True)
-    #     self.fps_task = taskMgr.add(self.update_fps, "fps_task")
+        self.fps_task = taskMgr.add(self.update_fps, "fps_task")
 
-    # def update_fps(self, task):
-    #     self.fps.setText("FPS: " + str(int(round(globalClock.getAverageFrameRate(), 0))))
-    #     return Task.cont
+    def update_fps(self, task):
+        self.fps.setText("FPS: " + str(int(round(globalClock.getAverageFrameRate(), 0))))
+        return Task.cont
 
     def change_fov(self, fov):
         # base.camLens.setFov(fov)
