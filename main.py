@@ -31,7 +31,7 @@ class MainWindow(ShowBase):
 
         props = WindowProperties()
         props.setTitle("Braincraft")
-        props.setSize(3840, 2160)
+        props.setSize(1920, 1080)
         props.setCursorHidden(True)
         # props.setFullscreen(True)
         props.setIconFilename("assets/textures/icon.ico")
@@ -61,10 +61,6 @@ class MainWindow(ShowBase):
         self.accept("c-up", self.zoom_out_smol)
         # self.accept("mouse1", self.place_block)
 
-        bignode = self.render.attachNewNode("bignode")
-        for block in world:
-            self.create_cube(world[block], block)
-        bignode.flattenStrong()
         z = 6
         y = 8
         x = 10
@@ -105,6 +101,14 @@ class MainWindow(ShowBase):
         self.camCollisionQueue = CollisionHandlerQueue()
         self.cTrav.addCollider(camCollisionNP, self.camCollisionQueue)
         camCollisionNP.show()
+
+        self.world_creation = taskMgr.add(self.create_world, "world_creation")
+
+    def create_world(self, task):
+        bignode = self.render.attachNewNode("bignode")
+        for block in world:
+            self.create_cube(world[block], block)
+        bignode.flattenStrong()
 
     def zoom_out(self):
         self.camera.setY(self.camera, -100)
@@ -181,6 +185,27 @@ class MainWindow(ShowBase):
             neighbours["front"] = True
         if (coords[0], coords[1], coords[2] + 2) in world:
             neighbours["back"] = True
+        # check if any blocks next to it dont have bedrock beneath them at y level: 144
+        # if world[(coords[0] - 2, 144, coords[2])] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
+        # elif world[(coords[0] + 2, 144, coords[2])] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
+        # elif world[(coords[0], 144, coords[2] - 2)] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
+        # elif world[(coords[0], 144, coords[2] + 2)] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
         return neighbours
 
     def create_cube(self, block, coords):

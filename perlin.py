@@ -1,5 +1,5 @@
 from perlin_noise import PerlinNoise
-import json, random, os, h5py
+import json, random, os
 import numpy as np
 import pickle
 
@@ -18,7 +18,7 @@ def generate_world():
         # seed = random.randint(0, 100000000000000000000000000000)
         seed = 2
         print("Generating world with seed: " + str(seed))
-        world = generate_perlin_noise_2d(16, 16, seed)
+        world = generate_perlin_noise_2d(32, 32, seed)
         # world = generate_random(8, 8)
     # with open("world.json", "w") as f:
         # json.dump(world, f)
@@ -46,19 +46,19 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
     random.seed(seed)
     noise = PerlinNoise(octaves=10, seed=seed)
     world = {}
-    scale = 10
+    scale = 100
     for x in range(width):
-        for y in range(height):
-            wow = 8
+        for z in range(height):
+            wow = int((noise([x/scale, z/scale]) + 1) * 2)
             if random.randint(0, 100) < 5:
-                world[(x * 2, wow, y * 2)] = "poppy"
+                world[(x * 2, wow, z * 2)] = "poppy"
             elif random.randint(0, 100) < 5:
-                world[(x * 2, wow, y * 2)] = "dandelion"
+                world[(x * 2, wow, z * 2)] = "dandelion"
             wow += 2
-            world[(x * 2, wow, y * 2)] = "grass_block"
+            world[(x * 2, wow, z * 2)] = "grass_block"
             wow += 2
             for i in range(0, 2):
-                world[(x * 2, wow, y * 2)] = "dirt_block"
+                world[(x * 2, wow, z * 2)] = "dirt_block"
                 wow += 2
             for i in range(0, 64):
                 deeper_block = "stone"
@@ -67,10 +67,10 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
                     deeper_block = "dirt_block"
                 else:
                     deeper_block = "stone"
-                world[(x * 2, wow, y * 2)] = deeper_block
+                world[(x * 2, wow, z * 2)] = deeper_block
                 stone_deepness += 1
                 wow += 2
-            world[(x * 2, wow, y * 2)] = "bedrock"
+            world[(x * 2, wow, z * 2)] = "bedrock"
     with open("assets/treasure.json", "r") as f:
         treasure = json.load(f)
     for block in world:
