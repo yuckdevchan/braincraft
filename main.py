@@ -8,16 +8,16 @@ from direct.interval.LerpInterval import LerpFunc
 from direct.showbase.ShowBaseGlobal import globalClock
 from panda3d.core import WindowProperties
 from pathlib import Path
-import math
+import math, time
 
 from build_textures import build_textures
 textures = build_textures()
 from build_world import build_world
-world = build_world()
 
 class MainWindow(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
+        prog_timer = time.time()
 
         self.created_cards = []
         
@@ -31,7 +31,7 @@ class MainWindow(ShowBase):
 
         props = WindowProperties()
         props.setTitle("Braincraft")
-        props.setSize(1920, 1080)
+        props.setSize(3840, 2160)
         props.setCursorHidden(True)
         # props.setFullscreen(True)
         props.setIconFilename("assets/textures/icon.ico")
@@ -64,26 +64,6 @@ class MainWindow(ShowBase):
         z = 6
         y = 8
         x = 10
-        self.create_cube("obsidian", (x, y, z))
-        self.create_cube("obsidian", (x, y-2, z))
-        self.create_cube("obsidian", (x, y-4, z))
-        self.create_cube("obsidian", (x, y-6, z))
-        self.create_cube("obsidian", (x, y-8, z))
-        self.create_cube("nether_portal", (x+2, y-2, z))
-        self.create_cube("nether_portal", (x+2, y-4, z))
-        self.create_cube("nether_portal", (x+2, y-6, z))
-        self.create_cube("nether_portal", (x+4, y-2, z))
-        self.create_cube("nether_portal", (x+4, y-4, z))
-        self.create_cube("nether_portal", (x+4, y-6, z))
-        self.create_cube("obsidian", (x+2, y, z))
-        self.create_cube("obsidian", (x+4, y, z))
-        self.create_cube("obsidian", (x+6, y, z))
-        self.create_cube("obsidian", (x+6, y-2, z))
-        self.create_cube("obsidian", (x+6, y-4, z))
-        self.create_cube("obsidian", (x+6, y-6, z))
-        self.create_cube("obsidian", (x+6, y-8, z))
-        self.create_cube("obsidian", (x+4, y-8, z))
-        self.create_cube("obsidian", (x+2, y-8, z))
         
         self.disableMouse()
         self.mouseLookTask = taskMgr.add(self.mouseLook, "mouseLookTask")
@@ -102,13 +82,21 @@ class MainWindow(ShowBase):
         self.cTrav.addCollider(camCollisionNP, self.camCollisionQueue)
         camCollisionNP.show()
 
+        world_timer = time.time()
+        self.world = build_world()
+        print("World generated in " + str(round(time.time() - world_timer, 2)) + " seconds")
         self.world_creation = taskMgr.add(self.create_world, "world_creation")
 
     def create_world(self, task):
-        bignode = self.render.attachNewNode("bignode")
-        for block in world:
-            self.create_cube(world[block], block)
-        bignode.flattenStrong()
+        timer = time.time()
+        print("Creating World geometry")
+        self.bignode = self.render.attachNewNode("bignode")
+        for block in self.world:
+            self.create_cube(self.world[block], block)
+        print("Finished creating world geometry in " + str(round(time.time() - timer, 2)) + " seconds")
+        print("Flattening world geometry")
+        self.bignode.flattenStrong()
+        print("Finished flattening world geometry")
 
     def zoom_out(self):
         self.camera.setY(self.camera, -100)
@@ -173,39 +161,41 @@ class MainWindow(ShowBase):
         #                 neighbours["back"] = True
         #         return neighbours
         neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
-        if (coords[0], coords[1] - 2, coords[2]) in world and not "2dcross" in self.thing_id_to_data(world[(coords[0], coords[1] - 2, coords[2])])["textures"]:
+        if (coords[0], coords[1] - 2, coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1] - 2, coords[2])])["textures"]:
             neighbours["top"] = True
-        if (coords[0], coords[1] + 2, coords[2]) in world:
+        if (coords[0], coords[1] + 2, coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1] + 2, coords[2])])["textures"]:
             neighbours["bottom"] = True
-        if (coords[0] - 2, coords[1], coords[2]) in world:
+        if (coords[0] - 2, coords[1], coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0] - 2, coords[1], coords[2])])["textures"]:
             neighbours["left"] = True
-        if (coords[0] + 2, coords[1], coords[2]) in world:
+        if (coords[0] + 2, coords[1], coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0] + 2, coords[1], coords[2])])["textures"]:
             neighbours["right"] = True
-        if (coords[0], coords[1], coords[2] - 2) in world:
+        if (coords[0], coords[1], coords[2] - 2) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] - 2)])["textures"]:
             neighbours["front"] = True
-        if (coords[0], coords[1], coords[2] + 2) in world:
+        if (coords[0], coords[1], coords[2] + 2) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] + 2)])["textures"]:
             neighbours["back"] = True
+        if self.thing_id_to_data(self.world[coords])["id"] == "bedrock":
+            neighbours["bottom"] = True
         # check if any blocks next to it dont have bedrock beneath them at y level: 144
-        # if world[(coords[0] - 2, 144, coords[2])] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
-        # elif world[(coords[0] + 2, 144, coords[2])] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
-        # elif world[(coords[0], 144, coords[2] - 2)] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
-        # elif world[(coords[0], 144, coords[2] + 2)] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
+        if self.world[(coords[0] - 2, 144, coords[2])] != "bedrock":
+            neighbours["front"] = True
+            neighbours["back"] = True
+            neighbours["left"] = True
+            neighbours["right"] = True
+        elif self.world[(coords[0] + 2, 144, coords[2])] != "bedrock":
+            neighbours["front"] = True
+            neighbours["back"] = True
+            neighbours["left"] = True
+            neighbours["right"] = True
+        elif self.world[(coords[0], 144, coords[2] - 2)] != "bedrock":
+            neighbours["front"] = True
+            neighbours["back"] = True
+            neighbours["left"] = True
+            neighbours["right"] = True
+        elif self.world[(coords[0], 144, coords[2] + 2)] != "bedrock":
+            neighbours["front"] = True
+            neighbours["back"] = True
+            neighbours["left"] = True
+            neighbours["right"] = True
         return neighbours
 
     def create_cube(self, block, coords):
@@ -248,21 +238,23 @@ class MainWindow(ShowBase):
             left = Path("assets", "textures", "block", block_data["textures"]["left"])
             right = Path("assets", "textures", "block", block_data["textures"]["right"])
 
+            texture_dict = {}
+            
             if (top == bottom) and (top == front) and (top == back) and (top == left) and (top == right):
-                texture = self.loader.loadTexture(top)
-                texture_2 = texture
-                texture_3 = texture
-                texture_4 = texture
-                texture_5 = texture
-                texture_6 = texture
-                texture.setMagfilter(0)
+                if top not in texture_dict:
+                    texture_dict[top] = self.loader.loadTexture(top)
+                    texture_dict[top].setMagfilter(0)
+                texture = texture_2 = texture_3 = texture_4 = texture_5 = texture_6 = texture_dict[top]
             else:
-                texture = self.loader.loadTexture(front)
-                texture_2 = self.loader.loadTexture(bottom)
-                texture_3 = self.loader.loadTexture(top)
-                texture_4 = self.loader.loadTexture(back)
-                texture_5 = self.loader.loadTexture(left)
-                texture_6 = self.loader.loadTexture(right)
+                for tex_name in [front, bottom, top, back, left, right]:
+                    if tex_name not in texture_dict:
+                        texture_dict[tex_name] = self.loader.loadTexture(tex_name)
+                texture = texture_dict[front]
+                texture_2 = texture_dict[bottom]
+                texture_3 = texture_dict[top]
+                texture_4 = texture_dict[back]
+                texture_5 = texture_dict[left]
+                texture_6 = texture_dict[right]
 
             texture.setMagfilter(0)
             texture_2.setMagfilter(0)
@@ -271,86 +263,76 @@ class MainWindow(ShowBase):
             texture_5.setMagfilter(0)
             texture_6.setMagfilter(0)
 
-            if not self.find_neighbours(original_coords)["front"]:
+            neighs = self.find_neighbours(original_coords)
+
+            if not neighs["front"]:
                 card = CardMaker("card")
                 card.setFrame(-1, 1, -1, 1)
                 node = self.render.attachNewNode(card.generate())
                 node.setPos(*coords)
                 node.setTexture(texture, 0)
+                node.reparentTo(self.bignode)
                 # collision_node = CollisionNode("collision_node")
                 # collision_node.addSolid(CollisionBox(Point3(0, 1, 0), 1, 1, 1))
                 # collision_node_path = node.attachNewNode(collision_node)
                 # collision_node_path.show()
 
-            if not self.find_neighbours(original_coords)["bottom"]:
+            if not neighs["bottom"]:
                 card_2 = CardMaker("card_2")
                 card_2.setFrame(-1, 1, -1, 1)
                 node_2 = self.render.attachNewNode(card_2.generate())
                 node_2.setPos(coords[0], coords[1] + 1, coords[2] - 1)
                 node_2.setHpr(0, 90, 0)
-                self.created_cards.append([coords[0], coords[1] + 1, coords[2] - 1])
+                node_2.reparentTo(self.bignode)
+                # self.created_cards.append([coords[0], coords[1] + 1, coords[2] - 1])
 
                 node_2.setTexture(texture_2, 0)
 
-            if not self.find_neighbours(original_coords)["top"]:
+            if not neighs["top"]:
                 card_3 = CardMaker("card_3")
                 card_3.setFrame(-1, 1, -1, 1)
                 node_3 = self.render.attachNewNode(card_3.generate())
                 node_3.setPos(coords[0], coords[1] + 1, coords[2] + 1)
                 node_3.setHpr(0, -90, 180)
-                self.created_cards.append([coords[0], coords[1] + 1, coords[2] + 1])
+                node_3.reparentTo(self.bignode)
+                # self.created_cards.append([coords[0], coords[1] + 1, coords[2] + 1])
 
                 node_3.setTexture(texture_3, 0)
 
-            if not self.find_neighbours(original_coords)["left"]:
+            if not neighs["left"]:
                 card_4 = CardMaker("card_4")
                 card_4.setFrame(-1, 1, -1, 1)
                 node_4 = self.render.attachNewNode(card_4.generate())
                 node_4.setPos(coords[0] - 1, coords[1] + 1, coords[2])
                 node_4.setHpr(-90, 0, 0)
-                self.created_cards.append([coords[0] - 1, coords[1] + 1, coords[2]])
+                node_4.reparentTo(self.bignode)
+                # self.created_cards.append([coords[0] - 1, coords[1] + 1, coords[2]])
 
                 node_4.setTexture(texture_4, 0)
 
-            if not self.find_neighbours(original_coords)["right"]:
+            if not neighs["right"]:
                 card_5 = CardMaker("card_5")
                 card_5.setFrame(-1, 1, -1, 1)
                 node_5 = self.render.attachNewNode(card_5.generate())
                 node_5.setPos(coords[0] + 1, coords[1] + 1, coords[2])
                 node_5.setHpr(90, 0, 0)
-                self.created_cards.append([coords[0] + 1, coords[1] + 1, coords[2]])
+                node_5.reparentTo(self.bignode)
+                # self.created_cards.append([coords[0] + 1, coords[1] + 1, coords[2]])
 
                 node_5.setTexture(texture_5, 0)
 
-            if not self.find_neighbours(original_coords)["back"]:
+            if not neighs["back"]:
                 card_6 = CardMaker("card_6")
                 card_6.setFrame(-1, 1, -1, 1)
                 node_6 = self.render.attachNewNode(card_6.generate())
                 node_6.setPos(coords[0], coords[1] + 2, coords[2])
                 node_6.setHpr(0, 180, 180)
-                self.created_cards.append([coords[0], coords[1] + 2, coords[2]])
+                node_6.reparentTo(self.bignode)
+                # self.created_cards.append([coords[0], coords[1] + 2, coords[2]])
 
                 node_6.setTexture(texture_6, 0)
             
-            # reparent all nodes to bignode
-            node.reparentTo(self.bignode)
-            node_2.reparentTo(self.bignode)
-            node_3.reparentTo(self.bignode)
-            node_4.reparentTo(self.bignode)
-            node_5.reparentTo(self.bignode)
-            node_6.reparentTo(self.bignode)
-
-            try:
-                if block_data["transparency"]:
-                    node.setTransparency(1)
-                    node_2.setTransparency(1)
-                    node_3.setTransparency(1)
-                    node_4.setTransparency(1)
-                    node_5.setTransparency(1)
-                    node_6.setTransparency(1)
-            except KeyError:
-                pass
-        except:
+        except KeyError:
             pass
 
     def addHUD(self):
@@ -400,9 +382,12 @@ class MainWindow(ShowBase):
             # Normalize the direction vector and scale it by the speed
             direction.normalize()
             direction *= self.speed
-        
+    
+            # Get the time elapsed since the last frame
+            dt = globalClock.getDt()
+    
             # Update the camera's position
-            base.camera.setPos(base.camera.getPos() + direction)
+            base.camera.setPos(base.camera.getPos() + direction * dt * 75)
     
         return Task.cont  # Continue the task indefinitely
 
@@ -431,8 +416,10 @@ class MainWindow(ShowBase):
             direction.normalize()
             direction *= self.speed
 
+            dt = globalClock.getDt()
+
             # Update the camera's position
-            base.camera.setPos(base.camera.getPos() - direction)
+            base.camera.setPos(base.camera.getPos() - direction * dt * 75)
 
         return Task.cont  # Continue the task indefinitely
     
@@ -461,8 +448,10 @@ class MainWindow(ShowBase):
             direction.normalize()
             direction *= self.speed
 
+            dt = globalClock.getDt()
+
             # Update the camera's position
-            base.camera.setPos(base.camera.getPos() + direction)
+            base.camera.setPos(base.camera.getPos() + direction * dt * 75)
 
         return Task.cont
     
@@ -491,8 +480,10 @@ class MainWindow(ShowBase):
             direction.normalize()
             direction *= self.speed
 
+            dt = globalClock.getDt()
+
             # Update the camera's position
-            base.camera.setPos(base.camera.getPos() + direction)
+            base.camera.setPos(base.camera.getPos() + direction * dt * 75)
 
         return Task.cont
 

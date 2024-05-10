@@ -1,0 +1,12 @@
+{
+    "textures": {
+        "top": "oak_log_top.png",
+        "bottom": "oak_log_top.png",
+        "front": "oak_log.png",
+        "back": "oak_log.png",
+        "left": "oak_log.png",
+        "right": "oak_log.png"
+    },
+    "id": "oak_log",
+    "name": "Oak Log"
+}

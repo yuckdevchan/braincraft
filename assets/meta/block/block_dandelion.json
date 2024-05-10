@@ -2,6 +2,12 @@
     "textures": {
         "2dcross": "dandelion.png"
     },
+    "props": {
+        "flower": {
+            "spawns": true,
+            "rarity": 5
+        }
+    },
     "id": "dandelion",
-    "name": "dandelion"
+    "name": "Dandelion"
 }

@@ -18,13 +18,16 @@ def generate_world():
         # seed = random.randint(0, 100000000000000000000000000000)
         seed = 2
         print("Generating world with seed: " + str(seed))
-        world = generate_perlin_noise_2d(32, 32, seed)
+        world = generate_perlin_noise_2d(64, 64, seed)
+        # world = generate_skyblock_world()
         # world = generate_random(8, 8)
     # with open("world.json", "w") as f:
         # json.dump(world, f)
     # save as pickle
+    print("World generated")
     with open("world.pkl", "wb") as f:
         pickle.dump(world, f)
+    print("World pickled")
     return world
 
 def generate_superflat_world(composition: dict, width: int, height: int) -> list:
@@ -42,18 +45,70 @@ def generate_superflat_world(composition: dict, width: int, height: int) -> list
     return world
 
 
+def get_flowers():
+    flowers = {}
+    for blockmeta in os.listdir("assets/meta/block"):
+        with open(f"assets/meta/block/{blockmeta}", "r") as f:
+            block = json.load(f)
+        try:
+            if block["props"]["flower"]["spawns"]:
+                flowers[block["id"]] = block["props"]["flower"]
+        except KeyError:
+            pass
+    return flowers
+
+def get_structures():
+    structures = {}
+    for structure in os.listdir("assets/meta/structures"):
+        with open(f"assets/meta/structures/{structure}", "r") as f:
+            structures[structure] = json.load(f)
+    return structures
+
+def generate_skyblock_world(width=6, height=6):
+    world = {}
+    for n in range(0, 2):
+        for i in range(0, 3):
+            for j in range(0, 3):
+                world[(i*2, 0, j*2)] = "grass_block"
+                world[(i*2, 2, j*2)] = "dirt_block"
+    for n in range(0, 2):
+        for i in range(0, 3):
+            for j in range(0, 3):
+                world[(i*2, 0, j*2-6)] = "grass_block"
+                world[(i*2, 2, j*2-6)] = "dirt_block"
+    for n in range(0, 2):
+        for i in range(0, 3):
+            for j in range(0, 3):
+                world[(i*2 + 6, 0, j*2-6)] = "grass_block"
+                world[(i*2 + 6, 2, j*2-6)] = "dirt_block"
+    # generate structure
+    tree = "oak_tree.json"
+    with open(f"assets/meta/structures/{tree}", "r") as f:
+        tree = json.load(f)
+    for block in tree["blocks"]:
+        world[(block[0][0] + 2, block[0][1], block[0][2]+2)] = block[1]
+    return world
+
 def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
     random.seed(seed)
     noise = PerlinNoise(octaves=10, seed=seed)
     world = {}
-    scale = 100
+    scale = 300
+    flowers = get_flowers()
+    structures = get_structures()
     for x in range(width):
         for z in range(height):
-            wow = int((noise([x/scale, z/scale]) + 1) * 2)
-            if random.randint(0, 100) < 5:
-                world[(x * 2, wow, z * 2)] = "poppy"
-            elif random.randint(0, 100) < 5:
-                world[(x * 2, wow, z * 2)] = "dandelion"
+            wow = int((noise([x/scale, z/scale]) + 2) * 5)
+            if wow % 2 != 0:
+                wow += 1
+            wow2 = 0
+            for flower in flowers:
+                if random.randint(0, 100) <= flowers[flower]["rarity"]:
+                    world[(x * 2, wow, z * 2)] = flower
+            for structure in structures:
+                if random.randint(0, 100) < structures[structure]["rarity"]:
+                    for block in structures[structure]["blocks"]:
+                        world[(x * 2 + block[0][0], wow + block[0][1], z * 2 + block[0][2])] = block[1]
             wow += 2
             world[(x * 2, wow, z * 2)] = "grass_block"
             wow += 2
@@ -70,7 +125,7 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
                 world[(x * 2, wow, z * 2)] = deeper_block
                 stone_deepness += 1
                 wow += 2
-            world[(x * 2, wow, z * 2)] = "bedrock"
+            world[(x * 2, 144, z * 2)] = "bedrock"
     with open("assets/treasure.json", "r") as f:
         treasure = json.load(f)
     for block in world:
@@ -82,19 +137,7 @@ def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
             ):
                 if random.randint(0, 100) < treasure[ore]["rarity"]:
                     world[block] = ore
-    # add ores between wow 12 and 24
-    # for block in world:
-    #     with open("assets/treasure.json", "r") as f:
-    #         treasure = json.load(f)
-    #     for ore in treasure:
-    #         if (
-    #             block["coords"][1] >= treasure[ore]["yLower"]
-    #             and block["coords"][1] <= treasure[ore]["yUpper"]
-    #         ):
-    #             if random.randint(0, 100) < treasure[ore]["rarity"]:
-    #                 block["block"] = ore
     return world
-
 
 def generate_random(width: int, height: int) -> list:
     world = []

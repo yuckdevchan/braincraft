@@ -1,6 +1,6 @@
 {
     "textures": {
-        "2dcross": "poppy.png"
+        "2dcross": "cornflower.png"
     },
     "props": {
         "flower": {
@@ -8,6 +8,6 @@
             "rarity": 5
         }
     },
-    "id": "poppy",
-    "name": "Poppy"
+    "id": "cornflower",
+    "name": "Cornflower"
 }

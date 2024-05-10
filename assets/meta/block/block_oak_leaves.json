@@ -1,0 +1,13 @@
+{
+    "textures": {
+        "top": "oak_leaves.png",
+        "bottom": "oak_leaves.png",
+        "front": "oak_leaves.png",
+        "back": "oak_leaves.png",
+        "left": "oak_leaves.png",
+        "right": "oak_leaves.png"
+    },
+    "id": "oak_leaves",
+    "name": "Oak Leaves",
+    "transparency": true
+}
