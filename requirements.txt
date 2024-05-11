@@ -1,3 +1,2 @@
 panda3d
-PySide6
 perlin-noise

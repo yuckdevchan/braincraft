@@ -7,7 +7,9 @@
         "left": "nether_portal.png",
         "right": "nether_portal.png"
     },
+    "props": {
+        "transparency": true
+    },
     "id": "nether_portal",
-    "name": "Nether Portal Block",
-    "transparency": true
+    "name": "Nether Portal Block"
 }

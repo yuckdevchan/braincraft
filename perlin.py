@@ -18,7 +18,7 @@ def generate_world():
         # seed = random.randint(0, 100000000000000000000000000000)
         seed = 2
         print("Generating world with seed: " + str(seed))
-        world = generate_perlin_noise_2d(64, 64, seed)
+        world = generate_perlin_noise_2d(16, 16, seed, 0, 0)
         # world = generate_skyblock_world()
         # world = generate_random(8, 8)
     # with open("world.json", "w") as f:
@@ -29,6 +29,10 @@ def generate_world():
         pickle.dump(world, f)
     print("World pickled")
     return world
+
+def get_chunk(seed, chunkx, chunkz):
+    chunk = generate_perlin_noise_2d(16, 16, seed, chunkx, chunkz)
+    return chunk
 
 def generate_superflat_world(composition: dict, width: int, height: int) -> list:
     world = []
@@ -87,17 +91,18 @@ def generate_skyblock_world(width=6, height=6):
         tree = json.load(f)
     for block in tree["blocks"]:
         world[(block[0][0] + 2, block[0][1], block[0][2]+2)] = block[1]
+    print(world)
     return world
 
-def generate_perlin_noise_2d(width: int, height: int, seed: int) -> list:
+def generate_perlin_noise_2d(width: int, height: int, seed: int, chunkx: int, chunkz: int) -> list:
     random.seed(seed)
     noise = PerlinNoise(octaves=10, seed=seed)
     world = {}
     scale = 300
     flowers = get_flowers()
     structures = get_structures()
-    for x in range(width):
-        for z in range(height):
+    for x in range(chunkx, width):
+        for z in range(chunkz, height):
             wow = int((noise([x/scale, z/scale]) + 2) * 5)
             if wow % 2 != 0:
                 wow += 1

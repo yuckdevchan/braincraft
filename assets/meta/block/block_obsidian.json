@@ -7,6 +7,8 @@
         "left": "obsidian.png",
         "right": "obsidian.png"
     },
+    "props": {
+    },
     "id": "obsidian",
     "name": "Obsidian"
 }

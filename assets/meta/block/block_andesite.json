@@ -7,6 +7,8 @@
         "left": "andesite.png",
         "right": "andesite.png"
     },
+    "props": {
+    },
     "id": "andesite",
     "name": "Andesite"
 }

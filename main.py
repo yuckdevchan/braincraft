@@ -1,18 +1,21 @@
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import CardMaker, TextureStage, loadPrcFileData, WindowProperties, Vec3, TextNode, ClockObject, CollisionNode, CollisionBox, Point3
+from panda3d.core import CardMaker, TextureStage, loadPrcFileData, WindowProperties, Vec3, TextNode, ClockObject, CollisionNode, CollisionBox, Point3, NodePath
 from direct.task import Task
 from direct.showbase.DirectObject import DirectObject
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import ClockObject, LVector3, CollisionRay, CollisionNode, CollisionTraverser, CollisionHandlerQueue, CollisionTraverser, CollisionHandlerQueue, BitMask32, CollisionSphere
 from direct.interval.LerpInterval import LerpFunc
 from direct.showbase.ShowBaseGlobal import globalClock
+from direct.filter.CommonFilters import CommonFilters
 from panda3d.core import WindowProperties
 from pathlib import Path
 import math, time
+from panda3d.physics import PhysicsManager, PhysicalNode, ForceNode, LinearVectorForce
 
 from build_textures import build_textures
 textures = build_textures()
 from build_world import build_world
+from perlin import get_chunk
 
 class MainWindow(ShowBase):
     def __init__(self):
@@ -59,7 +62,8 @@ class MainWindow(ShowBase):
         self.accept("=", self.zoom_in)
         self.accept("c", self.zoom_in_smol)
         self.accept("c-up", self.zoom_out_smol)
-        # self.accept("mouse1", self.place_block)
+        self.accept("p", self.floating_block)
+        self.accept("mouse1", self.break_block)
 
         z = 6
         y = 8
@@ -86,17 +90,83 @@ class MainWindow(ShowBase):
         self.world = build_world()
         print("World generated in " + str(round(time.time() - world_timer, 2)) + " seconds")
         self.world_creation = taskMgr.add(self.create_world, "world_creation")
+        filters = CommonFilters(base.win, base.cam)
+        # filters.setMSAA(2)
+        base.physicsMgr = PhysicsManager()
+        # add gravity
+        gravityFN=ForceNode('world-forces')
+        gravityFNP=render.attachNewNode(gravityFN)
+        self.gravityForce=LinearVectorForce(0,0,-9.81) #gravity acceleration
+        gravityFN.addForce(self.gravityForce)
+
+    def break_block(self):
+        # Create a collision ray that starts at the camera's position and goes in the direction the camera is facing.
+        camera = base.camNode
+        collision_ray = CollisionRay()
+        collision_ray.setOrigin(base.camera.getPos())
+        look_vec = base.camera.getQuat().getForward()
+        collision_ray.setDirection(look_vec)
+    
+        # Create a collision node for the ray.
+        collision_node = CollisionNode('collision_ray')
+        collision_node.addSolid(collision_ray)
+        collision_node.setFromCollideMask(BitMask32.allOn())
+        collision_node.setIntoCollideMask(BitMask32.allOff())
+    
+        # Attach the collision node to a new node path.
+        collision_np = NodePath(collision_node)
+        collision_np.reparentTo(base.render)
+    
+        # Create a collision traverser and a collision queue.
+        traverser = CollisionTraverser()
+        queue = CollisionHandlerQueue()
+    
+        # Add the collision node path to the traverser.
+        traverser.addCollider(collision_np, queue)
+    
+        # Traverse the scene.
+        traverser.traverse(base.render)
+    
+        # If the ray hit something, remove the hit object.
+        print(queue)
+        if queue.getNumEntries() > 0:
+            queue.sortEntries()
+            hit_obj = queue.getEntry(0).getIntoNodePath()
+            print(hit_obj)
+            hit_obj.removeNode()
+    
+        # Clean up.
+        collision_np.removeNode()
+
+    def floating_block(self):
+        self.physnode = PhysicalNode("physnode")
+        self.bignode.attachNewNode(self.physnode)
+        self.create_cube("obsidian", (0, 4, 6), parentnode=self.bignode, cull=False)
+        base.physicsMgr.attachPhysicalNode(self.physnode)
+        base.physicsMgr.addLinearForce(self.gravityForce)
+
+    def next_chunk(self):
+        chunkx = 1
+        chunkz = 0
+        chunk = get_chunk(2, chunkx, chunkz)
+        for block in chunk:
+            coords = (block[0] + 32, block[1], block[2])
+            self.create_cube(chunk[block], coords)
+        self.bignode.flattenStrong()
 
     def create_world(self, task):
         timer = time.time()
         print("Creating World geometry")
         self.bignode = self.render.attachNewNode("bignode")
+        self.bignode.node().setIntoCollideMask(BitMask32.bit(0))
         for block in self.world:
-            self.create_cube(self.world[block], block)
+            self.create_cube(self.world[block], block, parentnode=None, cull=True)
         print("Finished creating world geometry in " + str(round(time.time() - timer, 2)) + " seconds")
         print("Flattening world geometry")
+        flatten_timer = time.time()
         self.bignode.flattenStrong()
-        print("Finished flattening world geometry")
+        print("Finished flattening world geometry in " + str(round(time.time() - flatten_timer, 2)) + " seconds")
+        # self.next_chunk()
 
     def zoom_out(self):
         self.camera.setY(self.camera, -100)
@@ -140,65 +210,45 @@ class MainWindow(ShowBase):
         return Task.cont  # Continue the task indefinitely
 
     def find_neighbours(self, coords):
-        # neighbours is dictionary with top, bottom, left, right, front, back as keys and bool as values True if there is a block, False if there isn't
-        # for block in world:
-        #     if block["coords"] == coords:
-        #         neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
-        #         for block in world:
-        #             target_coords = (coords[0], coords[1] + 2, coords[2])
-        #             if block["coords"] == [coords[0], coords[1] - 2, coords[2]]:
-        #                 if not "2dcross" in self.thing_id_to_data(block["block"])["textures"]:
-        #                     neighbours["top"] = True
-        #             if block["coords"] == [coords[0], coords[1] + 2, coords[2]]:
-        #                 neighbours["bottom"] = True
-        #             if block["coords"] == [coords[0] - 2, coords[1], coords[2]]:
-        #                 neighbours["left"] = True
-        #             if block["coords"] == [coords[0] + 2, coords[1], coords[2]]:
-        #                 neighbours["right"] = True
-        #             if block["coords"] == [coords[0], coords[1], coords[2] - 2]:
-        #                 neighbours["front"] = True
-        #             if block["coords"] == [coords[0], coords[1], coords[2] + 2]:
-        #                 neighbours["back"] = True
-        #         return neighbours
         neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
-        if (coords[0], coords[1] - 2, coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1] - 2, coords[2])])["textures"]:
+        if (coords[0], coords[1] - 2, coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1] - 2, coords[2])])["props"]:
             neighbours["top"] = True
-        if (coords[0], coords[1] + 2, coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1] + 2, coords[2])])["textures"]:
+        if (coords[0], coords[1] + 2, coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1] + 2, coords[2])])["props"]:
             neighbours["bottom"] = True
-        if (coords[0] - 2, coords[1], coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0] - 2, coords[1], coords[2])])["textures"]:
+        if (coords[0] - 2, coords[1], coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0] - 2, coords[1], coords[2])])["props"]:
             neighbours["left"] = True
-        if (coords[0] + 2, coords[1], coords[2]) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0] + 2, coords[1], coords[2])])["textures"]:
+        if (coords[0] + 2, coords[1], coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0] + 2, coords[1], coords[2])])["props"]:
             neighbours["right"] = True
-        if (coords[0], coords[1], coords[2] - 2) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] - 2)])["textures"]:
+        if (coords[0], coords[1], coords[2] - 2) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] - 2)])["props"]:
             neighbours["front"] = True
-        if (coords[0], coords[1], coords[2] + 2) in self.world and not "2dcross" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] + 2)])["textures"]:
+        if (coords[0], coords[1], coords[2] + 2) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] + 2)])["props"]:
             neighbours["back"] = True
         if self.thing_id_to_data(self.world[coords])["id"] == "bedrock":
             neighbours["bottom"] = True
         # check if any blocks next to it dont have bedrock beneath them at y level: 144
-        if self.world[(coords[0] - 2, 144, coords[2])] != "bedrock":
-            neighbours["front"] = True
-            neighbours["back"] = True
-            neighbours["left"] = True
-            neighbours["right"] = True
-        elif self.world[(coords[0] + 2, 144, coords[2])] != "bedrock":
-            neighbours["front"] = True
-            neighbours["back"] = True
-            neighbours["left"] = True
-            neighbours["right"] = True
-        elif self.world[(coords[0], 144, coords[2] - 2)] != "bedrock":
-            neighbours["front"] = True
-            neighbours["back"] = True
-            neighbours["left"] = True
-            neighbours["right"] = True
-        elif self.world[(coords[0], 144, coords[2] + 2)] != "bedrock":
-            neighbours["front"] = True
-            neighbours["back"] = True
-            neighbours["left"] = True
-            neighbours["right"] = True
+        # if self.world[(coords[0] - 2, 144, coords[2])] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
+        # elif self.world[(coords[0] + 2, 144, coords[2])] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
+        # elif self.world[(coords[0], 144, coords[2] - 2)] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
+        # elif self.world[(coords[0], 144, coords[2] + 2)] != "bedrock":
+        #     neighbours["front"] = True
+        #     neighbours["back"] = True
+        #     neighbours["left"] = True
+        #     neighbours["right"] = True
         return neighbours
 
-    def create_cube(self, block, coords):
+    def create_cube(self, block: str, coords: tuple, parentnode, cull: bool):
         block_data = self.thing_id_to_data(block)
         original_coords = coords
         coords = (coords[0], coords[2], -coords[1])
@@ -263,7 +313,15 @@ class MainWindow(ShowBase):
             texture_5.setMagfilter(0)
             texture_6.setMagfilter(0)
 
-            neighs = self.find_neighbours(original_coords)
+            if cull:
+                neighs = self.find_neighbours(original_coords)
+            else:
+                neighs = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
+
+            try:
+                transparency = 1 if block_data["props"]["transparency"] else 0
+            except KeyError:
+                transparency = 0
 
             if not neighs["front"]:
                 card = CardMaker("card")
@@ -271,7 +329,10 @@ class MainWindow(ShowBase):
                 node = self.render.attachNewNode(card.generate())
                 node.setPos(*coords)
                 node.setTexture(texture, 0)
-                node.reparentTo(self.bignode)
+                node.setTransparency(transparency)
+                if parentnode is not None:
+                    node.reparentTo(parentnode)
+                    node.node().setIntoCollideMask(BitMask32.allOn())
                 # collision_node = CollisionNode("collision_node")
                 # collision_node.addSolid(CollisionBox(Point3(0, 1, 0), 1, 1, 1))
                 # collision_node_path = node.attachNewNode(collision_node)
@@ -283,7 +344,10 @@ class MainWindow(ShowBase):
                 node_2 = self.render.attachNewNode(card_2.generate())
                 node_2.setPos(coords[0], coords[1] + 1, coords[2] - 1)
                 node_2.setHpr(0, 90, 0)
-                node_2.reparentTo(self.bignode)
+                node_2.setTransparency(transparency)
+                if parentnode is not None:
+                    node_2.reparentTo(parentnode)
+                    node_2.node().setIntoCollideMask(BitMask32.allOn())
                 # self.created_cards.append([coords[0], coords[1] + 1, coords[2] - 1])
 
                 node_2.setTexture(texture_2, 0)
@@ -294,7 +358,10 @@ class MainWindow(ShowBase):
                 node_3 = self.render.attachNewNode(card_3.generate())
                 node_3.setPos(coords[0], coords[1] + 1, coords[2] + 1)
                 node_3.setHpr(0, -90, 180)
-                node_3.reparentTo(self.bignode)
+                node_3.setTransparency(transparency)
+                if parentnode is not None:
+                    node_3.reparentTo(parentnode)
+                    node_3.node().setIntoCollideMask(BitMask32.allOn())
                 # self.created_cards.append([coords[0], coords[1] + 1, coords[2] + 1])
 
                 node_3.setTexture(texture_3, 0)
@@ -305,7 +372,10 @@ class MainWindow(ShowBase):
                 node_4 = self.render.attachNewNode(card_4.generate())
                 node_4.setPos(coords[0] - 1, coords[1] + 1, coords[2])
                 node_4.setHpr(-90, 0, 0)
-                node_4.reparentTo(self.bignode)
+                node_4.setTransparency(transparency)
+                if parentnode is not None:
+                    node_4.reparentTo(parentnode)
+                    node_4.node().setIntoCollideMask(BitMask32.allOn())
                 # self.created_cards.append([coords[0] - 1, coords[1] + 1, coords[2]])
 
                 node_4.setTexture(texture_4, 0)
@@ -316,7 +386,10 @@ class MainWindow(ShowBase):
                 node_5 = self.render.attachNewNode(card_5.generate())
                 node_5.setPos(coords[0] + 1, coords[1] + 1, coords[2])
                 node_5.setHpr(90, 0, 0)
-                node_5.reparentTo(self.bignode)
+                node_5.setTransparency(transparency)
+                if parentnode is not None:
+                    node_5.reparentTo(parentnode)
+                    node_5.node().setIntoCollideMask(BitMask32.allOn())
                 # self.created_cards.append([coords[0] + 1, coords[1] + 1, coords[2]])
 
                 node_5.setTexture(texture_5, 0)
@@ -327,7 +400,10 @@ class MainWindow(ShowBase):
                 node_6 = self.render.attachNewNode(card_6.generate())
                 node_6.setPos(coords[0], coords[1] + 2, coords[2])
                 node_6.setHpr(0, 180, 180)
-                node_6.reparentTo(self.bignode)
+                node_6.setTransparency(transparency)
+                if parentnode is not None:
+                    node_6.reparentTo(parentnode)
+                    node_6.node().setIntoCollideMask(BitMask32.allOn())
                 # self.created_cards.append([coords[0], coords[1] + 2, coords[2]])
 
                 node_6.setTexture(texture_6, 0)
@@ -340,6 +416,19 @@ class MainWindow(ShowBase):
         OnscreenText(text=text, parent=base.a2dTopLeft, pos=(0.01, -0.07), fg=(1, 1, 1, 1), align=TextNode.ALeft, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"))
         self.fps = OnscreenText(text="", parent=base.a2dTopRight, pos=(-0.1, -0.07), fg=(1, 1, 1, 1), align=TextNode.ARight, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"), mayChange=True)
         self.fps_task = taskMgr.add(self.update_fps, "fps_task")
+        # add crosshair
+        crosshair = CardMaker("crosshair")
+        crosshair.setFrame(-0.05/2, 0.05/2, -0.05/2, 0.05/2)
+        crosshair_node = aspect2d.attachNewNode(crosshair.generate())
+        crosshair_node.setPos(0, 0, 0)
+        crosshair_node.setTransparency(1)
+        texture = self.loader.loadTexture("assets/textures/misc/crosshair.png")
+        texture.setMagfilter(0)
+        crosshair_node.setTexture(texture, 1)
+        crosshair_node.setTwoSided(True)
+        crosshair_node.setBin("fixed", 0)
+        crosshair_node.setDepthTest(False)
+        crosshair_node.setDepthWrite(False)
 
     def update_fps(self, task):
         self.fps.setText("FPS: " + str(int(round(globalClock.getAverageFrameRate(), 0))))

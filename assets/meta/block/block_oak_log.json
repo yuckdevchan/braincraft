@@ -7,6 +7,8 @@
         "left": "oak_log.png",
         "right": "oak_log.png"
     },
+    "props": {
+    },
     "id": "oak_log",
     "name": "Oak Log"
 }

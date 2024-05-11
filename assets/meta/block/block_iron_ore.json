@@ -7,6 +7,8 @@
         "left": "iron_ore.png",
         "right": "iron_ore.png"
     },
+    "props": {
+    },
     "id": "iron_ore",
     "name": "Iron Ore"
 }

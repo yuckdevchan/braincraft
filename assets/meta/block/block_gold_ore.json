@@ -7,6 +7,8 @@
         "left": "gold_ore.png",
         "right": "gold_ore.png"
     },
+    "props": {
+    },
     "id": "gold_ore",
     "name": "Gold Ore"
 }

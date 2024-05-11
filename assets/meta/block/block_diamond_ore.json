@@ -7,6 +7,8 @@
         "left": "diamond_ore.png",
         "right": "diamond_ore.png"
     },
+    "props": {
+    },
     "id": "diamond_ore",
     "name": "Diamond Ore"
 }

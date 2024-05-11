@@ -7,6 +7,8 @@
         "left": "emerald_ore.png",
         "right": "emerald_ore.png"
     },
+    "props": {
+    },
     "id": "emerald_ore",
     "name": "Emerald Ore"
 }

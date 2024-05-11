@@ -7,7 +7,9 @@
         "left": "oak_leaves.png",
         "right": "oak_leaves.png"
     },
+    "props": {
+        "transparency": true
+    },
     "id": "oak_leaves",
-    "name": "Oak Leaves",
-    "transparency": true
+    "name": "Oak Leaves"
 }

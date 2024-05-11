@@ -7,6 +7,8 @@
         "left": "bedrock.png",
         "right": "bedrock.png"
     },
+    "props": {
+    },
     "id": "bedrock",
     "name": "Bedrock"
 }

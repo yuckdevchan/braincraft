@@ -6,7 +6,8 @@
         "flower": {
             "spawns": true,
             "rarity": 5
-        }
+        },
+        "transparency": true
     },
     "id": "allium",
     "name": "Allium"

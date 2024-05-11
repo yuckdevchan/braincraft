@@ -7,6 +7,8 @@
         "left": "stone.png",
         "right": "stone.png"
     },
+    "props": {
+    },
     "id": "stone",
     "name": "Stone"
 }

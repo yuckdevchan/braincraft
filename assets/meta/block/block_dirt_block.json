@@ -7,6 +7,10 @@
         "left": "dirt.png",
         "right": "dirt.png"
     },
+    "props": {
+    },
+    "props": {
+    },
     "id": "dirt_block",
     "name": "Dirt Block"
 }
