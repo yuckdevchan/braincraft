@@ -1,0 +1,9 @@
+{
+    "textures": {
+        "model": "chicken.gltf"
+    },
+    "props": {
+    },
+    "id": "chicken_egg",
+    "name": "Chicken Spawn Egg"
+}

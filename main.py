@@ -9,7 +9,7 @@ from direct.showbase.ShowBaseGlobal import globalClock
 from direct.filter.CommonFilters import CommonFilters
 from panda3d.core import WindowProperties
 from pathlib import Path
-import math, time
+import math, time, os, json, toml
 from panda3d.physics import PhysicsManager, PhysicalNode, ForceNode, LinearVectorForce
 
 from build_textures import build_textures
@@ -20,6 +20,9 @@ from perlin import get_chunk
 class MainWindow(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
+        with open("config.toml", "r") as f:
+            config = toml.load(f)
+        self.config = config
         prog_timer = time.time()
 
         self.created_cards = []
@@ -32,13 +35,13 @@ class MainWindow(ShowBase):
         self.move_down_task = None
         self.sprint_task = None
 
-        props = WindowProperties()
-        props.setTitle("Braincraft")
-        props.setSize(3840, 2160)
-        props.setCursorHidden(True)
+        self.props = WindowProperties()
+        self.props.setTitle("Parablocks")
+        self.props.setSize(3840, 2160)
+        self.props.setCursorHidden(True)
         # props.setFullscreen(True)
-        props.setIconFilename("assets/textures/icon.ico")
-        self.win.requestProperties(props)
+        self.props.setIconFilename("assets/textures/icon.ico")
+        self.win.requestProperties(self.props)
 
         self.speed = 0.15
         self.accept("escape", self.userExit)
@@ -64,6 +67,9 @@ class MainWindow(ShowBase):
         self.accept("c-up", self.zoom_out_smol)
         self.accept("p", self.floating_block)
         self.accept("mouse1", self.break_block)
+        self.accept("e", self.toggle_inventory)
+        self.accept("wheel_up", self.item_up)
+        self.accept("wheel_down", self.item_down)
 
         z = 6
         y = 8
@@ -98,50 +104,205 @@ class MainWindow(ShowBase):
         gravityFNP=render.attachNewNode(gravityFN)
         self.gravityForce=LinearVectorForce(0,0,-9.81) #gravity acceleration
         gravityFN.addForce(self.gravityForce)
+        self.spawn_entity("chicken")
+        self.create_inventory()
+        self.breaking_inhibitor = False
+        self.mouse_camera_inhibitor = False
+        self.held_item = 0
+        self.item_is_held = False
+        print("Program started in " + str(round(time.time() - prog_timer, 2)) + " seconds")
+
+    def toggle_inventory(self):
+        if self.inventory_node.isHidden():
+            self.open_inventory()
+        else:
+            self.close_inventory()
+
+    def create_inventory(self):
+        inv_timer = time.time()
+        print("Creating inventory")
+        self.inventory = CardMaker("inventory")
+        self.inventory.setFrame(-1, 1, -1, 1)
+        self.inventory_node = aspect2d.attachNewNode(self.inventory.generate())
+        self.inventory_node.setPos(0, 0, 0)
+        self.inventory_node.setScale(0.75)
+        self.inventory_node.setTransparency(1)
+        texture = self.loader.loadTexture("assets/textures/gui/inventory.png")
+        texture.setMagfilter(0)
+        self.inventory_node.setTexture(texture, 1)
+        self.inventory_node.setTwoSided(True)
+        self.inventory_node.setBin("fixed", 0)
+        self.inventory_node.setDepthTest(False)
+        self.inventory_node.setDepthWrite(False)
+        self.inventory_node.hide()
+        block_pos = 0.5
+        block_pos_y = 5
+        for category in os.listdir("assets/meta"):
+            if category != "structures":
+                for blockmeta in os.listdir(f"assets/meta/{category}"):
+                    with open(f"assets/meta/{category}/" + blockmeta, "r") as f:
+                        block = json.load(f)
+                        try:
+                            try:
+                                front_texture = block["textures"]["front"]
+                            except KeyError:
+                                front_texture = block["textures"]["2dcross"]
+                            block_card = CardMaker("block_card")
+                            block_card.setFrame(-1, 1, -1, 1)
+                            block_node = self.inventory_node.attachNewNode(block_card.generate())
+                            block_node.setTransparency(1)
+                            block_texture = self.loader.loadTexture(Path("assets", "textures", category, front_texture))
+                            block_texture.setMagfilter(0)
+                            block_node.setTexture(block_texture, 1)
+                            block_node.setTwoSided(True)
+                            block_node.setBin("fixed", 0)
+                            block_node.setDepthTest(False)
+                            block_node.setDepthWrite(False)
+                            if block_pos >= 9:
+                                block_pos = 0
+                                block_pos_y += 1
+                            block_node.setPos(-0.9 + (block_pos * 0.2), 0, 0.9 - (block_pos_y * 0.2))
+                            block_node.setScale(0.085)
+                            block_pos += 1
+                        except KeyError:
+                            pass
+        print("Inventory created in " + str(round(time.time() - inv_timer, 2)) + " seconds")
+
+    def item_up(self):
+        items = []
+        for category in os.listdir("assets/meta"):
+            if category != "structures":
+                for blockmeta in os.listdir(f"assets/meta/{category}"):
+                    with open(f"assets/meta/{category}/" + blockmeta, "r") as f:
+                        block = json.load(f)
+                        try:
+                            if not block["textures"]["model"]:
+                                items.append(block)
+                        except KeyError:
+                            items.append(block)
+        if self.held_item < len(items) - 1:
+            self.held_item += 1
+            self.hold_item(items[self.held_item]["id"])
+        else:
+            self.held_item = 0
+            self.hold_item(items[self.held_item]["id"])
+
+    def item_down(self):
+        items = []
+        for category in os.listdir("assets/meta"):
+            if category != "structures":
+                for blockmeta in os.listdir(f"assets/meta/{category}"):
+                    with open(f"assets/meta/{category}/" + blockmeta, "r") as f:
+                        block = json.load(f)
+                        try:
+                            if not block["textures"]["model"]:
+                                items.append(block)
+                        except KeyError:
+                            items.append(block)
+        if self.held_item > 0:
+            self.held_item -= 1
+            self.hold_item(items[self.held_item]["id"])
+        else:
+            self.held_item = len(items) - 1
+            self.hold_item(items[self.held_item]["id"])
+
+    def hold_item(self, item: str):
+        if self.item_is_held:
+            for child in aspect2d.getChildren():
+                if child.getName() == "held_item":
+                    child.removeNode()
+        else:
+            self.item_is_held = True
+        for category in os.listdir("assets/meta"):
+            if category != "structures":
+                for blockmeta in os.listdir(f"assets/meta/{category}"):
+                    with open(f"assets/meta/{category}/" + blockmeta, "r") as f:
+                        block = json.load(f)
+                        if block["id"] == item:
+                            item = block
+        held_item = CardMaker("held_item")
+        held_item.setFrame(-1, 1, -1, 1)
+        held_item_node = aspect2d.attachNewNode(held_item.generate())
+        held_item_node.setPos(0.9, 0, -0.9)
+        held_item_node.setTransparency(1)
+        print(item)
+        try:
+            held_item_texture = self.loader.loadTexture(Path("assets", "textures", "block", item["textures"]["front"]))
+        except KeyError:
+            held_item_texture = self.loader.loadTexture(Path("assets", "textures", "block", item["textures"]["2dcross"]))
+        held_item_texture.setMagfilter(0)
+        held_item_node.setTexture(held_item_texture, 1)
+        held_item_node.setTwoSided(False)
+        held_item_node.setBin("fixed", 0)
+        held_item_node.setDepthTest(False)
+        held_item_node.setDepthWrite(False)
+        held_item_node.setScale(0.75)
+        held_item_node.setHpr(25, 0, 0)
+
+    def open_inventory(self):
+        self.inventory_node.show()
+        self.breaking_inhibitor = True
+        self.props.setCursorHidden(False)
+        base.win.requestProperties(self.props)
+        self.mouse_camera_inhibitor = True
+
+    def close_inventory(self):
+        self.inventory_node.hide()
+        self.breaking_inhibitor = False
+        self.props.setCursorHidden(True)
+        base.win.requestProperties(self.props)
+        self.mouse_camera_inhibitor = False
+
+    def spawn_entity(self, entity: str):
+        # create a gltf model
+        self.mob = self.loader.loadModel("assets/models/" + entity + ".gltf")
+        self.mob.reparentTo(self.render)
+        self.mob.setScale(4)
 
     def break_block(self):
-        # Create a collision ray that starts at the camera's position and goes in the direction the camera is facing.
-        camera = base.camNode
-        collision_ray = CollisionRay()
-        collision_ray.setOrigin(base.camera.getPos())
-        look_vec = base.camera.getQuat().getForward()
-        collision_ray.setDirection(look_vec)
-    
-        # Create a collision node for the ray.
-        collision_node = CollisionNode('collision_ray')
-        collision_node.addSolid(collision_ray)
-        collision_node.setFromCollideMask(BitMask32.allOn())
-        collision_node.setIntoCollideMask(BitMask32.allOff())
-    
-        # Attach the collision node to a new node path.
-        collision_np = NodePath(collision_node)
-        collision_np.reparentTo(base.render)
-    
-        # Create a collision traverser and a collision queue.
-        traverser = CollisionTraverser()
-        queue = CollisionHandlerQueue()
-    
-        # Add the collision node path to the traverser.
-        traverser.addCollider(collision_np, queue)
-    
-        # Traverse the scene.
-        traverser.traverse(base.render)
-    
-        # If the ray hit something, remove the hit object.
-        print(queue)
-        if queue.getNumEntries() > 0:
-            queue.sortEntries()
-            hit_obj = queue.getEntry(0).getIntoNodePath()
-            print(hit_obj)
-            hit_obj.removeNode()
-    
-        # Clean up.
-        collision_np.removeNode()
+        if not self.breaking_inhibitor:
+            # Create a collision ray that starts at the camera's position and goes in the direction the camera is facing.
+            camera = base.camNode
+            collision_ray = CollisionRay()
+            collision_ray.setOrigin(base.camera.getPos())
+            look_vec = base.camera.getQuat().getForward()
+            collision_ray.setDirection(look_vec)
+        
+            # Create a collision node for the ray.
+            collision_node = CollisionNode('collision_ray')
+            collision_node.addSolid(collision_ray)
+            collision_node.setFromCollideMask(BitMask32.allOn())
+            collision_node.setIntoCollideMask(BitMask32.allOff())
+        
+            # Attach the collision node to a new node path.
+            collision_np = NodePath(collision_node)
+            collision_np.reparentTo(base.render)
+        
+            # Create a collision traverser and a collision queue.
+            traverser = CollisionTraverser()
+            queue = CollisionHandlerQueue()
+        
+            # Add the collision node path to the traverser.
+            traverser.addCollider(collision_np, queue)
+        
+            # Traverse the scene.
+            traverser.traverse(base.render)
+        
+            # If the ray hit something, remove the hit object.
+            print(queue)
+            if queue.getNumEntries() > 0:
+                queue.sortEntries()
+                hit_obj = queue.getEntry(0).getIntoNodePath()
+                print(hit_obj)
+                hit_obj.removeNode()
+        
+            # Clean up.
+            collision_np.removeNode()
 
     def floating_block(self):
         self.physnode = PhysicalNode("physnode")
         self.bignode.attachNewNode(self.physnode)
-        self.create_cube("obsidian", (0, 4, 6), parentnode=self.bignode, cull=False)
+        self.create_cube("jukebox", (0, 4, 6), parentnode=self.bignode, cull=False)
         base.physicsMgr.attachPhysicalNode(self.physnode)
         base.physicsMgr.addLinearForce(self.gravityForce)
 
@@ -160,11 +321,12 @@ class MainWindow(ShowBase):
         self.bignode = self.render.attachNewNode("bignode")
         self.bignode.node().setIntoCollideMask(BitMask32.bit(0))
         for block in self.world:
-            self.create_cube(self.world[block], block, parentnode=None, cull=True)
+            self.create_cube(self.world[block], block, parentnode=self.bignode, cull=True)
         print("Finished creating world geometry in " + str(round(time.time() - timer, 2)) + " seconds")
         print("Flattening world geometry")
         flatten_timer = time.time()
-        self.bignode.flattenStrong()
+        if self.config["Performance"]["flatten_geometry"]:
+            self.bignode.flattenStrong()
         print("Finished flattening world geometry in " + str(round(time.time() - flatten_timer, 2)) + " seconds")
         # self.next_chunk()
 
@@ -181,9 +343,8 @@ class MainWindow(ShowBase):
         base.camLens.setFov(base.camLens.getFov() + 25)
 
     def toggle_fullscreen(self):
-        props = WindowProperties()
-        props.setFullscreen(not base.win.isFullscreen())
-        base.win.requestProperties(props)
+        self.props.setFullscreen(not base.win.isFullscreen())
+        base.win.requestProperties(self.props)
 
     def toggle_wireframe(self):
         base.toggleWireframe()
@@ -191,61 +352,64 @@ class MainWindow(ShowBase):
         print(num_primatives)
 
     def mouseLook(self, task):
-        """Update the camera view based on mouse movement."""
-        if base.mouseWatcherNode.hasMouse():
-            # Get the mouse position
-            md = base.win.getPointer(0)
-            x = md.getX()
-            y = md.getY()
+        if not self.mouse_camera_inhibitor:
+            """Update the camera view based on mouse movement."""
+            if base.mouseWatcherNode.hasMouse():
+                # Get the mouse position
+                md = base.win.getPointer(0)
+                x = md.getX()
+                y = md.getY()
 
-            # Calculate the rotation based on mouse position
-            # Adjust these factors to change the mouse sensitivity
-            # Swap the control of pitch and heading
-            base.camera.setP(base.camera.getP() - (y - base.win.getYSize()/2)*0.1)
-            base.camera.setH(base.camera.getH() - (x - base.win.getXSize()/2)*0.1)
+                # Calculate the rotation based on mouse position
+                # Adjust these factors to change the mouse sensitivity
+                # Swap the control of pitch and heading
+                base.camera.setP(base.camera.getP() - (y - base.win.getYSize()/2)*0.1)
+                base.camera.setH(base.camera.getH() - (x - base.win.getXSize()/2)*0.1)
 
-            # Reset the mouse cursor to the center of the screen
-            base.win.movePointer(0, int(base.win.getXSize()/2), int(base.win.getYSize()/2))
+                # Reset the mouse cursor to the center of the screen
+                base.win.movePointer(0, int(base.win.getXSize()/2), int(base.win.getYSize()/2))
 
         return Task.cont  # Continue the task indefinitely
 
     def find_neighbours(self, coords):
         neighbours = {"top": False, "bottom": False, "left": False, "right": False, "front": False, "back": False}
-        if (coords[0], coords[1] - 2, coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1] - 2, coords[2])])["props"]:
-            neighbours["top"] = True
-        if (coords[0], coords[1] + 2, coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1] + 2, coords[2])])["props"]:
-            neighbours["bottom"] = True
-        if (coords[0] - 2, coords[1], coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0] - 2, coords[1], coords[2])])["props"]:
-            neighbours["left"] = True
-        if (coords[0] + 2, coords[1], coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0] + 2, coords[1], coords[2])])["props"]:
-            neighbours["right"] = True
-        if (coords[0], coords[1], coords[2] - 2) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] - 2)])["props"]:
-            neighbours["front"] = True
-        if (coords[0], coords[1], coords[2] + 2) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] + 2)])["props"]:
-            neighbours["back"] = True
-        if self.thing_id_to_data(self.world[coords])["id"] == "bedrock":
-            neighbours["bottom"] = True
-        # check if any blocks next to it dont have bedrock beneath them at y level: 144
-        # if self.world[(coords[0] - 2, 144, coords[2])] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
-        # elif self.world[(coords[0] + 2, 144, coords[2])] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
-        # elif self.world[(coords[0], 144, coords[2] - 2)] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
-        # elif self.world[(coords[0], 144, coords[2] + 2)] != "bedrock":
-        #     neighbours["front"] = True
-        #     neighbours["back"] = True
-        #     neighbours["left"] = True
-        #     neighbours["right"] = True
+        if self.config["Performance"]["cull_neighboured_faces"]:
+            if (coords[0], coords[1] - 2, coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1] - 2, coords[2])])["props"]:
+                neighbours["top"] = True
+            if (coords[0], coords[1] + 2, coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1] + 2, coords[2])])["props"]:
+                neighbours["bottom"] = True
+            if (coords[0] - 2, coords[1], coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0] - 2, coords[1], coords[2])])["props"]:
+                neighbours["left"] = True
+            if (coords[0] + 2, coords[1], coords[2]) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0] + 2, coords[1], coords[2])])["props"]:
+                neighbours["right"] = True
+            if (coords[0], coords[1], coords[2] - 2) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] - 2)])["props"]:
+                neighbours["front"] = True
+            if (coords[0], coords[1], coords[2] + 2) in self.world and not "transparency" in self.thing_id_to_data(self.world[(coords[0], coords[1], coords[2] + 2)])["props"]:
+                neighbours["back"] = True
+            if self.thing_id_to_data(self.world[coords])["id"] == "bedrock":
+                neighbours["bottom"] = True
+
+        if self.config["Performance"]["cull_faces_neighbouring_void"]:
+            if self.world[(coords[0] - 2, 144, coords[2])] != "bedrock":
+                neighbours["front"] = True
+                neighbours["back"] = True
+                neighbours["left"] = True
+                neighbours["right"] = True
+            elif self.world[(coords[0] + 2, 144, coords[2])] != "bedrock":
+                neighbours["front"] = True
+                neighbours["back"] = True
+                neighbours["left"] = True
+                neighbours["right"] = True
+            elif self.world[(coords[0], 144, coords[2] - 2)] != "bedrock":
+                neighbours["front"] = True
+                neighbours["back"] = True
+                neighbours["left"] = True
+                neighbours["right"] = True
+            elif self.world[(coords[0], 144, coords[2] + 2)] != "bedrock":
+                neighbours["front"] = True
+                neighbours["back"] = True
+                neighbours["left"] = True
+                neighbours["right"] = True
         return neighbours
 
     def create_cube(self, block: str, coords: tuple, parentnode, cull: bool):
@@ -412,7 +576,7 @@ class MainWindow(ShowBase):
             pass
 
     def addHUD(self):
-        text = "braincraft Alpha"
+        text = "parablocks Alpha"
         OnscreenText(text=text, parent=base.a2dTopLeft, pos=(0.01, -0.07), fg=(1, 1, 1, 1), align=TextNode.ALeft, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"))
         self.fps = OnscreenText(text="", parent=base.a2dTopRight, pos=(-0.1, -0.07), fg=(1, 1, 1, 1), align=TextNode.ARight, scale=.04, font=base.loader.loadFont("assets/fonts/pixel.ttf"), mayChange=True)
         self.fps_task = taskMgr.add(self.update_fps, "fps_task")
@@ -425,7 +589,7 @@ class MainWindow(ShowBase):
         texture = self.loader.loadTexture("assets/textures/misc/crosshair.png")
         texture.setMagfilter(0)
         crosshair_node.setTexture(texture, 1)
-        crosshair_node.setTwoSided(True)
+        crosshair_node.setTwoSided(False)
         crosshair_node.setBin("fixed", 0)
         crosshair_node.setDepthTest(False)
         crosshair_node.setDepthWrite(False)

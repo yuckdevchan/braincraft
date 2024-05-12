@@ -1,0 +1,8 @@
+[Performance]
+cull_neighboured_faces = true
+cull_faces_neighbouring_void = false
+flatten_geometry = true
+
+[Graphics]
+width = 3840
+height = 2160

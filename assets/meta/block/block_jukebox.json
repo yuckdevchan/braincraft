@@ -1,0 +1,14 @@
+{
+    "textures": {
+        "top": "jukebox_top.png",
+        "bottom": "jukebox_side.png",
+        "front": "jukebox_side.png",
+        "back": "jukebox_side.png",
+        "left": "jukebox_side.png",
+        "right": "jukebox_side.png"
+    },
+    "props": {
+    },
+    "id": "jukebox",
+    "name": "Jukebox"
+}
