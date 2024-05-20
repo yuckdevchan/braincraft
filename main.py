@@ -37,7 +37,7 @@ class MainWindow(ShowBase):
 
         self.props = WindowProperties()
         self.props.setTitle("Parablocks")
-        self.props.setSize(3840, 2160)
+        self.props.setSize(1920, 1080)
         self.props.setCursorHidden(True)
         # props.setFullscreen(True)
         self.props.setIconFilename("assets/textures/icon.ico")
